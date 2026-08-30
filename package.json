@@ -1,0 +1,16 @@
+{
+  "name": "maintenaproof",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.15.0",
+  "workspaces": ["frontend"],
+  "scripts": {
+    "deploy:contract": "genlayer deploy",
+    "typecheck:deploy": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "genlayer-js": "^1.1.8",
+    "typescript": "^5.9.2"
+  }
+}
