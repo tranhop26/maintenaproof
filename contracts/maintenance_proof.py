@@ -101,11 +101,24 @@ class EvidenceRecord:
     evaluated: bool
 
 
+@allow_storage
+@dataclass
+class ResolutionAttempt:
+    case_id: u256
+    attempt_index: u256
+    evidence_version: u256
+    evaluator: Address
+    outcome: str
+    fingerprint: str
+    findings_json: str
+
+
 class MaintenanceProof(gl.Contract):
     next_case_id: u256
     cases: TreeMap[u256, MaintenanceCase]
     evidence: TreeMap[str, EvidenceRecord]
     used_replay_domains: TreeMap[str, bool]
+    attempts: TreeMap[str, ResolutionAttempt]
 
     def __init__(self):
         self.next_case_id = u256(0)
@@ -118,6 +131,9 @@ class MaintenanceProof(gl.Contract):
     def _evidence_key(self, case_id: int, revision_index: int) -> str:
         return str(case_id) + ":" + str(revision_index)
 
+    def _attempt_key(self, case_id: int, attempt_index: int) -> str:
+        return str(case_id) + ":" + str(attempt_index)
+
     def _replay_domain(self, case_id: int, version: int, url: str) -> str:
         payload = "|".join(
             [
@@ -129,6 +145,101 @@ class MaintenanceProof(gl.Contract):
             ]
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def _unresolved_decision(
+        self,
+        asset_hash: str,
+        cycle_id: str,
+        provider: str,
+        evidence_version: int,
+        reason: str,
+    ) -> dict:
+        return {
+            "asset_hash": asset_hash,
+            "completed": [],
+            "contradictions": [],
+            "cycle_id": cycle_id,
+            "evidence_version": evidence_version,
+            "missing": [],
+            "outcome": "UNRESOLVED",
+            "provider": provider,
+            "reason": reason,
+            "service_date": "",
+        }
+
+    def _normalize_decision(
+        self,
+        raw,
+        asset_hash: str,
+        cycle_id: str,
+        provider: str,
+        evidence_version: int,
+        cycle_start: str,
+        cycle_end: str,
+    ) -> dict:
+        fallback = self._unresolved_decision(
+            asset_hash,
+            cycle_id,
+            provider,
+            evidence_version,
+            "INVALID_OR_UNSAFE_RESULT",
+        )
+        if not isinstance(raw, dict):
+            return fallback
+        expected_keys = [
+            "asset_hash",
+            "completed",
+            "contradictions",
+            "cycle_id",
+            "evidence_version",
+            "missing",
+            "outcome",
+            "provider",
+            "reason",
+            "service_date",
+        ]
+        if sorted(raw.keys()) != expected_keys:
+            return fallback
+        if (
+            raw["asset_hash"] != asset_hash
+            or raw["cycle_id"] != cycle_id
+            or raw["provider"].lower() != provider.lower()
+            or raw["evidence_version"] != evidence_version
+        ):
+            return fallback
+        if (
+            not isinstance(raw["completed"], list)
+            or not isinstance(raw["missing"], list)
+            or not isinstance(raw["contradictions"], list)
+            or not all(isinstance(item, str) for item in raw["completed"])
+            or not all(isinstance(item, str) for item in raw["missing"])
+            or not all(isinstance(item, str) for item in raw["contradictions"])
+            or not isinstance(raw["reason"], str)
+        ):
+            return fallback
+
+        outcome = raw["outcome"]
+        service_date = raw["service_date"]
+        date_is_bound = (
+            _valid_iso_date(service_date)
+            and cycle_start <= service_date <= cycle_end
+        )
+        if outcome == "COMPLIANT":
+            if (
+                not date_is_bound
+                or len(raw["completed"]) == 0
+                or len(raw["missing"]) > 0
+                or len(raw["contradictions"]) > 0
+            ):
+                return fallback
+        elif outcome == "NON_COMPLIANT":
+            if not date_is_bound or (
+                len(raw["missing"]) == 0 and len(raw["contradictions"]) == 0
+            ):
+                return fallback
+        elif outcome != "UNRESOLVED":
+            return fallback
+        return raw
 
     @gl.public.write
     def create_case(
@@ -227,6 +338,106 @@ class MaintenanceProof(gl.Contract):
         case.evidence_count = u256(revision_index + 1)
         case.status = "SUBMITTED"
 
+    @gl.public.write
+    def evaluate(self, case_id: int) -> str:
+        case = self._get_case(case_id)
+        _require(case.status == "SUBMITTED", "case is not submitted")
+        revision_index = int(case.evidence_count) - 1
+        evidence = self.evidence[self._evidence_key(case_id, revision_index)]
+        _require(not evidence.evaluated, "evidence already evaluated")
+
+        asset_hash = case.asset_hash
+        cycle_id = case.cycle_id
+        provider = case.provider.as_hex
+        evidence_version = int(evidence.version)
+        cycle_start = case.cycle_start
+        cycle_end = case.cycle_end
+        policy = case.policy
+        evidence_url = evidence.url
+
+        def judge_evidence() -> str:
+            try:
+                web_data = gl.nondet.web.render(evidence_url, mode="text")
+            except Exception:
+                return _canonical(
+                    self._unresolved_decision(
+                        asset_hash,
+                        cycle_id,
+                        provider,
+                        evidence_version,
+                        "FETCH_FAILED",
+                    )
+                )
+            task = f"""MAINTENANCE_EVALUATION
+Evaluate only the public evidence below against the immutable case bindings.
+Asset hash: {asset_hash}
+Cycle: {cycle_id} from {cycle_start} through {cycle_end}
+Provider: {provider}
+Evidence version: {evidence_version}
+Policy obligations: {policy}
+Evidence: {web_data}
+
+Return only JSON with exactly these keys: outcome, asset_hash, cycle_id,
+provider, evidence_version, service_date, completed, missing, contradictions,
+reason. outcome is COMPLIANT only when every obligation is demonstrated;
+NON_COMPLIANT only for affirmative missing or failed obligations; otherwise
+UNRESOLVED. Arrays contain concise strings. Never infer missing identity data.
+"""
+            response = gl.nondet.exec_prompt(task)
+            try:
+                parsed = response if isinstance(response, dict) else json.loads(response)
+            except Exception:
+                parsed = None
+            normalized = self._normalize_decision(
+                parsed,
+                asset_hash,
+                cycle_id,
+                provider,
+                evidence_version,
+                cycle_start,
+                cycle_end,
+            )
+            return _canonical(normalized)
+
+        principle = """Results are equivalent only when outcome categories match;
+asset_hash, cycle_id, provider, evidence_version, and service_date identify the
+same evidence; and completed, missing, and contradiction lists express the same
+obligation findings. COMPLIANT, NON_COMPLIANT, and UNRESOLVED are never
+interchangeable. Reason wording may differ only when all decision-bearing fields
+remain equivalent."""
+        agreed = gl.eq_principle.prompt_comparative(judge_evidence, principle)
+        try:
+            parsed_agreed = json.loads(agreed)
+        except Exception:
+            parsed_agreed = None
+        decision = self._normalize_decision(
+            parsed_agreed,
+            asset_hash,
+            cycle_id,
+            provider,
+            evidence_version,
+            cycle_start,
+            cycle_end,
+        )
+        findings_json = _canonical(decision)
+        fingerprint = hashlib.sha256(findings_json.encode("utf-8")).hexdigest()
+        attempt_index = int(case.attempt_count)
+        self.attempts[self._attempt_key(case_id, attempt_index)] = ResolutionAttempt(
+            case_id=u256(case_id),
+            attempt_index=u256(attempt_index),
+            evidence_version=u256(evidence_version),
+            evaluator=gl.message.sender_address,
+            outcome=decision["outcome"],
+            fingerprint=fingerprint,
+            findings_json=findings_json,
+        )
+        evidence.evaluated = True
+        case.attempt_count = u256(attempt_index + 1)
+        case.status = decision["outcome"]
+        if decision["outcome"] == "COMPLIANT":
+            case.certificate_fingerprint = fingerprint
+        return findings_json
+
     @gl.public.view
     def case_count(self) -> int:
         return int(self.next_case_id)
@@ -268,5 +479,47 @@ class MaintenanceProof(gl.Contract):
                 "revision_index": int(evidence.revision_index),
                 "url": evidence.url,
                 "version": int(evidence.version),
+            }
+        )
+
+    @gl.public.view
+    def get_attempt(self, case_id: int, attempt_index: int) -> str:
+        self._get_case(case_id)
+        key = self._attempt_key(case_id, attempt_index)
+        _require(key in self.attempts, "attempt not found")
+        attempt = self.attempts[key]
+        return _canonical(
+            {
+                "attempt_index": int(attempt.attempt_index),
+                "case_id": int(attempt.case_id),
+                "evaluator": attempt.evaluator.as_hex,
+                "evidence_version": int(attempt.evidence_version),
+                "findings": json.loads(attempt.findings_json),
+                "fingerprint": attempt.fingerprint,
+                "outcome": attempt.outcome,
+            }
+        )
+
+    @gl.public.view
+    def get_certificate(self, case_id: int) -> str:
+        case = self._get_case(case_id)
+        _require(case.status == "COMPLIANT", "certificate unavailable")
+        attempt = self.attempts[
+            self._attempt_key(case_id, int(case.attempt_count) - 1)
+        ]
+        return _canonical(
+            {
+                "asset_hash": case.asset_hash,
+                "case_id": int(case.id),
+                "contract_address": gl.message.contract_address.as_hex,
+                "cycle_end": case.cycle_end,
+                "cycle_id": case.cycle_id,
+                "cycle_start": case.cycle_start,
+                "evidence_version": int(attempt.evidence_version),
+                "findings": json.loads(attempt.findings_json),
+                "fingerprint": case.certificate_fingerprint,
+                "policy": case.policy,
+                "policy_version": case.policy_version,
+                "provider": case.provider.as_hex,
             }
         )
