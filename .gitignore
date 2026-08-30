@@ -1,0 +1,12 @@
+work/
+outputs/
+.env
+.env.local
+node_modules/
+.next/
+dist/
+coverage/
+__pycache__/
+.pytest_cache/
+*.pyc
+
