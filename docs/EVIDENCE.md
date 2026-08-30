@@ -1,7 +1,6 @@
 # MaintenaProof verification evidence
 
-Verification status: **CONTRACT AND LIVE FLOWS VERIFIED; VERCEL PENDING** because
-`VERCEL_TOKEN` is not present in the execution environment.
+Verification status: **CONTRACT, LIVE FLOWS, AND PRODUCTION FRONTEND VERIFIED**.
 
 ## Actor-to-readback matrix
 
@@ -13,6 +12,8 @@ Verification status: **CONTRACT AND LIVE FLOWS VERIFIED; VERCEL PENDING** becaus
 | Reader | Verify certificate | `get_certificate(0)` | Read-only | successful | contract address, policy, evidence v1 and fingerprint all match | CLI readback + live adapter test |
 | Owner `0x68cc…17E67` | Create authorization-test case 1 | `create_case` | [`0x227b…3fcf2`](https://explorer-studio.genlayer.com/tx/0x227b94d98d70f690557de4b81472fac38154e13981e1bcf89fb1223e83f3fcf2) | `FINALIZED`, success | case 1 `DRAFT` | `frontend/tests/integration/live-contract-flow.test.ts` |
 | Unauthorized owner | Attempt provider-only submission | `submit_evidence` | [`0xb210…0e9f3`](https://explorer-studio.genlayer.com/tx/0xb210c9e631afeafcf69a80c8a506dc8576ddcbfaf48c646dd01fc4c6b510e9f3) | `FINALIZED`, execution error `only provider` | case 1 remains `DRAFT`; evidence count remains 0 | `frontend/tests/integration/live-contract-flow.test.ts` |
+| Browser wallet `0x21b4…2eC7` | Create production-UI case 2 | `create_case` | [`0xa94f…585f6`](https://explorer-studio.genlayer.com/tx/0xa94f4f583741b0157c3771afe2682d0314a0b8e953548378cdbd146369d585f6) | `FINALIZED`, success | case 2 `DRAFT`; owner/provider and immutable bindings match | production browser + CLI readback |
+| Browser wallet `0x21b4…2eC7` | Submit wrong-host evidence | client validation before `submit_evidence` | No transaction created | submit disabled | case 2 remains `DRAFT`; evidence count remains 0 | production browser validation |
 
 ## Source and deployment identity
 
@@ -25,8 +26,10 @@ Verification status: **CONTRACT AND LIVE FLOWS VERIFIED; VERCEL PENDING** becaus
 - Contract: [`0xffa5207C24e8Cd115c734eef23f2d891A4781F84`](https://explorer-studio.genlayer.com/address/0xffa5207C24e8Cd115c734eef23f2d891A4781F84)
 - Deployment: [`0x25fc98f44aa81afafe815b06f5fadf7a6d5cff4aef1eb69d509c119f42034d66`](https://explorer-studio.genlayer.com/tx/0x25fc98f44aa81afafe815b06f5fadf7a6d5cff4aef1eb69d509c119f42034d66), `FINALIZED`, `MAJORITY_AGREE`.
 - Deployment manifest: `deployments/studionet-0xffa5207c24e8cd115c734eef23f2d891a4781f84.json`.
-- Initial readback: `case_count = 0`; post-live-flow readback: `case_count = 2`.
-- Vercel URL: pending; no token was available, so no deployment is claimed.
+- Initial readback: `case_count = 0`; post-production-browser readback: `case_count = 3`.
+- Vercel project/team: `maintenaproof` / `tdh-s-projects`.
+- Production URL: <https://maintenaproof.vercel.app>.
+- Initial Vercel deployment: `dpl_EG6fxfH3Hm87myzjf9fYBXmdzqso`, built from commit `468d90ac6b67a54b8a925d304bd0a78d7a1a25ea` with root `frontend`.
 
 ## Verification results
 
@@ -43,6 +46,9 @@ Observed on 2026-08-30:
 - Secret scan: 0 matches.
 - Local responsive browser QA: desktop and 375×812, no horizontal overflow,
   console errors, or fabricated cases in unconfigured mode.
+- Production browser QA: connected wallet `0x21b4…2eC7`; real contract readback;
+  successful create transaction; wrong-host validation branch; 375×812 with no
+  horizontal overflow; no application console errors.
 
 Python Studionet integration exercises valid and mismatched evidence. Because
 validator output is nondeterministic, valid evidence may produce either a
@@ -59,5 +65,6 @@ transactions and certificate readback above.
   equipment identity.
 - `NON_COMPLIANT` requires affirmative evidence; absence alone is never failure.
 - A frozen deployment cannot be patched in place; recovery uses a new address.
-- Vercel production and browser QA against that public URL remain unverified
-  until the environment supplies `VERCEL_TOKEN`.
+- Vercel was deployed through the user-authorized authenticated Chrome session;
+  the originally requested `VERCEL_TOKEN` CLI path was not exercised because
+  that environment variable was absent.
