@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.15.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pip install -r requirements.txt
+      - run: pnpm install --frozen-lockfile
+      - run: genvm-lint check contracts/maintenance_proof.py
+        env: { PYTHONUTF8: "1" }
+      - run: pytest tests/direct -v
+        env: { PYTHONUTF8: "1" }
+      - run: pytest --collect-only tests/integration -q
+        env: { PYTHONUTF8: "1" }
+      - run: pnpm --dir frontend test
+      - run: pnpm --dir frontend lint
+      - run: pnpm --dir frontend typecheck
+      - run: pnpm --dir frontend build

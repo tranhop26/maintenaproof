@@ -18,7 +18,8 @@
     "lucide-react": "^0.542.0",
     "next": "^16.0.0",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "viem": "^2.37.4"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
