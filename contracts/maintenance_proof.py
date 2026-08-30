@@ -2,6 +2,7 @@
 """MaintenaProof: frozen maintenance-compliance cases on GenLayer."""
 
 from dataclasses import dataclass
+import hashlib
 import json
 import re
 
@@ -58,6 +59,17 @@ def _valid_iso_date(value: str) -> bool:
     return 1 <= day <= days[month - 1]
 
 
+def _valid_evidence_url(value: str, hostname: str) -> bool:
+    if not isinstance(value, str) or not 1 <= len(value) <= 1000:
+        return False
+    prefix = "https://"
+    if not value.startswith(prefix):
+        return False
+    remainder = value[len(prefix) :]
+    authority = re.split(r"[/?#]", remainder, maxsplit=1)[0]
+    return authority == hostname
+
+
 @allow_storage
 @dataclass
 class MaintenanceCase:
@@ -78,9 +90,22 @@ class MaintenanceCase:
     certificate_fingerprint: str
 
 
+@allow_storage
+@dataclass
+class EvidenceRecord:
+    case_id: u256
+    revision_index: u256
+    version: u256
+    url: str
+    replay_domain: str
+    evaluated: bool
+
+
 class MaintenanceProof(gl.Contract):
     next_case_id: u256
     cases: TreeMap[u256, MaintenanceCase]
+    evidence: TreeMap[str, EvidenceRecord]
+    used_replay_domains: TreeMap[str, bool]
 
     def __init__(self):
         self.next_case_id = u256(0)
@@ -89,6 +114,21 @@ class MaintenanceProof(gl.Contract):
         key = u256(case_id)
         _require(key in self.cases, "case not found")
         return self.cases[key]
+
+    def _evidence_key(self, case_id: int, revision_index: int) -> str:
+        return str(case_id) + ":" + str(revision_index)
+
+    def _replay_domain(self, case_id: int, version: int, url: str) -> str:
+        payload = "|".join(
+            [
+                str(gl.message.chain_id),
+                gl.message.contract_address.as_hex,
+                str(case_id),
+                str(version),
+                url,
+            ]
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     @gl.public.write
     def create_case(
@@ -151,6 +191,42 @@ class MaintenanceProof(gl.Contract):
         _require(case.status == "DRAFT", "case is not draft")
         case.status = "CANCELLED"
 
+    @gl.public.write
+    def submit_evidence(self, case_id: int, url: str, version: int) -> None:
+        case = self._get_case(case_id)
+        _require(gl.message.sender_address == case.provider, "only provider")
+        _require(
+            case.status in ("DRAFT", "UNRESOLVED"),
+            "case cannot accept evidence",
+        )
+        _require(
+            1 <= version < 2**32 and version > int(case.latest_evidence_version),
+            "invalid evidence version",
+        )
+        _require(
+            _valid_evidence_url(url, case.evidence_hostname),
+            "invalid evidence url",
+        )
+
+        replay_domain = self._replay_domain(case_id, version, url)
+        _require(
+            replay_domain not in self.used_replay_domains,
+            "evidence replayed",
+        )
+        revision_index = int(case.evidence_count)
+        self.evidence[self._evidence_key(case_id, revision_index)] = EvidenceRecord(
+            case_id=u256(case_id),
+            revision_index=u256(revision_index),
+            version=u256(version),
+            url=url,
+            replay_domain=replay_domain,
+            evaluated=False,
+        )
+        self.used_replay_domains[replay_domain] = True
+        case.latest_evidence_version = u256(version)
+        case.evidence_count = u256(revision_index + 1)
+        case.status = "SUBMITTED"
+
     @gl.public.view
     def case_count(self) -> int:
         return int(self.next_case_id)
@@ -175,5 +251,22 @@ class MaintenanceProof(gl.Contract):
                 "policy_version": case.policy_version,
                 "provider": case.provider.as_hex,
                 "status": case.status,
+            }
+        )
+
+    @gl.public.view
+    def get_evidence(self, case_id: int, revision_index: int) -> str:
+        self._get_case(case_id)
+        key = self._evidence_key(case_id, revision_index)
+        _require(key in self.evidence, "evidence not found")
+        evidence = self.evidence[key]
+        return _canonical(
+            {
+                "case_id": int(evidence.case_id),
+                "evaluated": evidence.evaluated,
+                "replay_domain": evidence.replay_domain,
+                "revision_index": int(evidence.revision_index),
+                "url": evidence.url,
+                "version": int(evidence.version),
             }
         )

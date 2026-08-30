@@ -214,3 +214,20 @@ def test_cancelled_case_cannot_be_cancelled_again(
 
     with direct_vm.expect_revert("case is not draft"):
         contract.cancel_case(case_id)
+
+
+def test_submitted_case_cannot_be_cancelled(
+    direct_vm, direct_deploy, direct_alice, direct_bob
+):
+    contract = direct_deploy("contracts/maintenance_proof.py")
+    direct_vm.sender = direct_alice
+    case_id = create_case(contract, direct_bob)
+    direct_vm.sender = direct_bob
+    contract.submit_evidence(
+        case_id, "https://httpbin.org/base64/maintenance-report-v1", 1
+    )
+    direct_vm.sender = direct_alice
+
+    with direct_vm.expect_revert("case is not draft"):
+        contract.cancel_case(case_id)
+    assert json.loads(contract.get_case(case_id))["status"] == "SUBMITTED"
