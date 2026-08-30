@@ -137,7 +137,11 @@ export class MaintenaProofClient {
       onProgress({ stage: "READBACK_CONFIRMED", hash });
       return { ok: true, hash, caseRecord };
     } catch (error) {
-      if (hash) onProgress({ stage: "EXECUTION_ERROR", hash });
+      onProgress({
+        stage: "EXECUTION_ERROR",
+        hash,
+        message: error instanceof Error ? error.message : "Unknown write error",
+      });
       return {
         ok: false,
         hash,

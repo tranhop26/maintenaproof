@@ -21,7 +21,8 @@ function adapter(key: `0x${string}`) {
 function evidenceUrl(provider: Address): string {
   const report = JSON.stringify({
     asset_hash: "a".repeat(64), cycle_id: "cycle-e2e", evidence_version: 1,
-    provider, service_date: "2026-08-15",
+    policy_version: "hvac-v1", provider, service_date: "2026-08-15",
+    report_issue_date: "2026-08-16",
     completed: ["replace intake filter", "verify outlet pressure 80-120 psi"],
   });
   return `https://httpbin.org/base64/${encodeURIComponent(Buffer.from(report).toString("base64"))}`;

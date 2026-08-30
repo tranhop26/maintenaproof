@@ -61,8 +61,10 @@ export interface DecisionFindings {
   evidence_version: number;
   missing: string[];
   outcome: "COMPLIANT" | "NON_COMPLIANT" | "UNRESOLVED";
+  policy_version: string;
   provider: Address;
   reason: string;
+  report_issue_date: string;
   service_date: string;
 }
 

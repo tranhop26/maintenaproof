@@ -14,7 +14,9 @@ def build_evidence_url(provider: str, *, asset_hash: str = "a" * 64) -> str:
         ],
         "cycle_id": "cycle-2026-q3",
         "evidence_version": 1,
+        "policy_version": "hvac-v1",
         "provider": provider,
+        "report_issue_date": "2026-08-16",
         "service_date": "2026-08-15",
     }
     encoded = base64.b64encode(

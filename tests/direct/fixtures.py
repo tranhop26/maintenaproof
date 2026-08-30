@@ -8,7 +8,9 @@ def compliant_result(provider_hex: str, *, version: int = 1) -> dict:
         "cycle_id": "cycle-2026-q3",
         "provider": provider_hex,
         "evidence_version": version,
+        "policy_version": "hvac-v1",
         "service_date": "2026-08-15",
+        "report_issue_date": "2026-08-16",
         "completed": [
             "replace intake filter",
             "verify outlet pressure 80-120 psi",

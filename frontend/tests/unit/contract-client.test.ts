@@ -97,6 +97,20 @@ describe("truthful write progress", () => {
     ]);
   });
 
+  it("terminates progress when the wallet rejects before a hash exists", async () => {
+    const stages: TransactionStage[] = [];
+    const client = new MaintenaProofClient(
+      port({ writeContract: vi.fn().mockRejectedValue(new Error("User rejected")) }),
+      address,
+      owner,
+    );
+
+    const result = await client.createCase(input, p => stages.push(p.stage));
+
+    expect(result.ok).toBe(false);
+    expect(stages).toEqual(["AWAITING_SIGNATURE", "EXECUTION_ERROR"]);
+  });
+
   it("rejects disconnected and unconfigured clients before writing", async () => {
     const sdk = port();
     await expect(

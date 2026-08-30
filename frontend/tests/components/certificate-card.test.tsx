@@ -12,7 +12,8 @@ const certificate: Certificate = {
   findings: {
     asset_hash: "b".repeat(64), completed: ["replace filter"], contradictions: [],
     cycle_id: "cycle-q3", evidence_version: 1, missing: [], outcome: "COMPLIANT",
-    provider: `0x${"2".repeat(40)}`, reason: "All obligations evidenced.",
+    policy_version: "v1", provider: `0x${"2".repeat(40)}`, reason: "All obligations evidenced.",
+    report_issue_date: "2026-08-16",
     service_date: "2026-08-15",
   },
   fingerprint: "f".repeat(64), policy: "Replace filter", policy_version: "v1",

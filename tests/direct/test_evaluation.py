@@ -86,7 +86,9 @@ def test_affirmative_missing_obligation_is_non_compliant(
         {"cycle_id": "wrong-cycle"},
         {"provider": "0x" + "f" * 40},
         {"evidence_version": 99},
+        {"policy_version": "superseded-v0"},
         {"service_date": "2026-10-01"},
+        {"report_issue_date": "2026-10-01"},
         {"outcome": "COMPLIANT", "missing": ["locked obligation"]},
         {"outcome": "COMPLIANT", "contradictions": ["conflicting pressure"]},
     ],
@@ -116,6 +118,69 @@ def test_malformed_model_output_becomes_unresolved(
 
     assert result["outcome"] == "UNRESOLVED"
     assert json.loads(submitted_case.get_case(0))["status"] == "UNRESOLVED"
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        {"provider": None},
+        {"evidence_version": "1"},
+        {"policy_version": None},
+        {"service_date": 20260815},
+        {"report_issue_date": []},
+        {"outcome": 7},
+        {"reason": None},
+    ],
+)
+def test_malformed_scalar_fields_become_unresolved(
+    direct_vm, submitted_case, direct_bob, mutation
+):
+    decision = compliant_result(to_hex(direct_bob))
+    decision.update(mutation)
+    _mock_decision(direct_vm, decision)
+
+    assert json.loads(submitted_case.evaluate(0))["outcome"] == "UNRESOLVED"
+
+
+def test_contradiction_alone_cannot_be_terminal_non_compliance(
+    direct_vm, submitted_case, direct_bob
+):
+    decision = compliant_result(to_hex(direct_bob))
+    decision.update(
+        {
+            "outcome": "NON_COMPLIANT",
+            "completed": [],
+            "missing": [],
+            "contradictions": ["Two incompatible pressure readings"],
+        }
+    )
+    _mock_decision(direct_vm, decision)
+
+    assert json.loads(submitted_case.evaluate(0))["outcome"] == "UNRESOLVED"
+
+
+def test_reason_wording_is_not_part_of_certificate_fingerprint(
+    direct_vm, direct_deploy, direct_alice, direct_bob
+):
+    fingerprints = []
+    for run, reason in enumerate(
+        ["All locked work is evidenced.", "Every obligation is proven."]
+    ):
+        contract = direct_deploy("contracts/maintenance_proof.py")
+        direct_vm.sender = direct_alice
+        contract.create_case(
+            "a" * 64, to_hex(direct_bob), "httpbin.org", VALID_POLICY,
+            "hvac-v1", "cycle-2026-q3", "2026-07-01", "2026-09-30",
+        )
+        direct_vm.sender = direct_bob
+        contract.submit_evidence(0, VALID_URL + "?run=" + str(run), 1)
+        decision = compliant_result(to_hex(direct_bob))
+        decision["reason"] = reason
+        _mock_decision(direct_vm, decision)
+        contract.evaluate(0)
+        fingerprints.append(json.loads(contract.get_certificate(0))["fingerprint"])
+
+    assert fingerprints[0] == fingerprints[1]
 
 
 def test_fetch_failure_becomes_recorded_unresolved(direct_vm, submitted_case):

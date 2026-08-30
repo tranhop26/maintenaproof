@@ -152,6 +152,7 @@ class MaintenanceProof(gl.Contract):
         cycle_id: str,
         provider: str,
         evidence_version: int,
+        policy_version: str,
         reason: str,
     ) -> dict:
         return {
@@ -162,8 +163,10 @@ class MaintenanceProof(gl.Contract):
             "evidence_version": evidence_version,
             "missing": [],
             "outcome": "UNRESOLVED",
+            "policy_version": policy_version,
             "provider": provider,
             "reason": reason,
+            "report_issue_date": "",
             "service_date": "",
         }
 
@@ -174,6 +177,7 @@ class MaintenanceProof(gl.Contract):
         cycle_id: str,
         provider: str,
         evidence_version: int,
+        policy_version: str,
         cycle_start: str,
         cycle_end: str,
     ) -> dict:
@@ -182,6 +186,7 @@ class MaintenanceProof(gl.Contract):
             cycle_id,
             provider,
             evidence_version,
+            policy_version,
             "INVALID_OR_UNSAFE_RESULT",
         )
         if not isinstance(raw, dict):
@@ -194,17 +199,32 @@ class MaintenanceProof(gl.Contract):
             "evidence_version",
             "missing",
             "outcome",
+            "policy_version",
             "provider",
             "reason",
+            "report_issue_date",
             "service_date",
         ]
         if sorted(raw.keys()) != expected_keys:
+            return fallback
+        if (
+            not isinstance(raw["asset_hash"], str)
+            or not isinstance(raw["cycle_id"], str)
+            or not isinstance(raw["provider"], str)
+            or not isinstance(raw["evidence_version"], int)
+            or not isinstance(raw["policy_version"], str)
+            or not isinstance(raw["service_date"], str)
+            or not isinstance(raw["report_issue_date"], str)
+            or not isinstance(raw["outcome"], str)
+            or not isinstance(raw["reason"], str)
+        ):
             return fallback
         if (
             raw["asset_hash"] != asset_hash
             or raw["cycle_id"] != cycle_id
             or raw["provider"].lower() != provider.lower()
             or raw["evidence_version"] != evidence_version
+            or raw["policy_version"] != policy_version
         ):
             return fallback
         if (
@@ -214,27 +234,35 @@ class MaintenanceProof(gl.Contract):
             or not all(isinstance(item, str) for item in raw["completed"])
             or not all(isinstance(item, str) for item in raw["missing"])
             or not all(isinstance(item, str) for item in raw["contradictions"])
-            or not isinstance(raw["reason"], str)
         ):
             return fallback
 
         outcome = raw["outcome"]
         service_date = raw["service_date"]
+        report_issue_date = raw["report_issue_date"]
         date_is_bound = (
             _valid_iso_date(service_date)
             and cycle_start <= service_date <= cycle_end
         )
+        issue_date_is_bound = (
+            _valid_iso_date(report_issue_date)
+            and service_date <= report_issue_date <= cycle_end
+        )
         if outcome == "COMPLIANT":
             if (
                 not date_is_bound
+                or not issue_date_is_bound
                 or len(raw["completed"]) == 0
                 or len(raw["missing"]) > 0
                 or len(raw["contradictions"]) > 0
             ):
                 return fallback
         elif outcome == "NON_COMPLIANT":
-            if not date_is_bound or (
-                len(raw["missing"]) == 0 and len(raw["contradictions"]) == 0
+            if (
+                not date_is_bound
+                or not issue_date_is_bound
+                or len(raw["missing"]) == 0
+                or len(raw["contradictions"]) > 0
             ):
                 return fallback
         elif outcome != "UNRESOLVED":
@@ -353,6 +381,7 @@ class MaintenanceProof(gl.Contract):
         cycle_start = case.cycle_start
         cycle_end = case.cycle_end
         policy = case.policy
+        policy_version = case.policy_version
         evidence_url = evidence.url
 
         def judge_evidence() -> str:
@@ -365,6 +394,7 @@ class MaintenanceProof(gl.Contract):
                         cycle_id,
                         provider,
                         evidence_version,
+                        policy_version,
                         "FETCH_FAILED",
                     )
                 )
@@ -375,11 +405,12 @@ Cycle: {cycle_id} from {cycle_start} through {cycle_end}
 Provider: {provider}
 Evidence version: {evidence_version}
 Policy obligations: {policy}
+Locked policy version: {policy_version}
 Evidence: {web_data}
 
 Return only JSON with exactly these keys: outcome, asset_hash, cycle_id,
-provider, evidence_version, service_date, completed, missing, contradictions,
-reason. outcome is COMPLIANT only when every obligation is demonstrated;
+provider, evidence_version, policy_version, service_date, report_issue_date,
+completed, missing, contradictions, reason. outcome is COMPLIANT only when every obligation is demonstrated;
 NON_COMPLIANT only for affirmative missing or failed obligations; otherwise
 UNRESOLVED. Arrays contain concise strings. Never infer missing identity data.
 """
@@ -394,13 +425,15 @@ UNRESOLVED. Arrays contain concise strings. Never infer missing identity data.
                 cycle_id,
                 provider,
                 evidence_version,
+                policy_version,
                 cycle_start,
                 cycle_end,
             )
             return _canonical(normalized)
 
         principle = """Results are equivalent only when outcome categories match;
-asset_hash, cycle_id, provider, evidence_version, and service_date identify the
+asset_hash, cycle_id, provider, evidence_version, policy_version, service_date,
+and report_issue_date identify the
 same evidence; and completed, missing, and contradiction lists express the same
 obligation findings. COMPLIANT, NON_COMPLIANT, and UNRESOLVED are never
 interchangeable. Reason wording may differ only when all decision-bearing fields
@@ -416,11 +449,21 @@ remain equivalent."""
             cycle_id,
             provider,
             evidence_version,
+            policy_version,
             cycle_start,
             cycle_end,
         )
         findings_json = _canonical(decision)
-        fingerprint = hashlib.sha256(findings_json.encode("utf-8")).hexdigest()
+        fingerprint_payload = _canonical(
+            {
+                key: value
+                for key, value in decision.items()
+                if key != "reason"
+            }
+        )
+        fingerprint = hashlib.sha256(
+            fingerprint_payload.encode("utf-8")
+        ).hexdigest()
         attempt_index = int(case.attempt_count)
         self.attempts[self._attempt_key(case_id, attempt_index)] = ResolutionAttempt(
             case_id=u256(case_id),

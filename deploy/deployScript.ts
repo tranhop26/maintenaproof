@@ -8,6 +8,7 @@ import type {
   GenLayerClient,
   TransactionHash,
 } from "genlayer-js/types";
+import { ExecutionResult, TransactionStatus } from "genlayer-js/types";
 
 const RUNNER =
   "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6";
@@ -23,12 +24,17 @@ export default async function main(client: GenLayerClient<GenLayerChain>) {
   });
   const receipt = await client.waitForTransactionReceipt({
     hash: deploymentTransaction as TransactionHash,
-    status: "FINALIZED" as never,
+    status: TransactionStatus.FINALIZED,
     retries: 240,
     interval: 5_000,
   });
   if (receipt.statusName !== "FINALIZED") {
     throw new Error(`Deployment did not finalize: ${receipt.statusName}`);
+  }
+  if (receipt.txExecutionResultName !== ExecutionResult.FINISHED_WITH_RETURN) {
+    throw new Error(
+      `Deployment execution failed: ${receipt.txExecutionResultName ?? "UNKNOWN"}`,
+    );
   }
 
   const contractAddress = (receipt.txDataDecoded as DecodedDeployData | undefined)
