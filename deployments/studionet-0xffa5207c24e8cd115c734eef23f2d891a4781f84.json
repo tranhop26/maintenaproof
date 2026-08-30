@@ -1,0 +1,14 @@
+{
+  "network": "studionet",
+  "chainId": 61999,
+  "classification": "INTENTIONALLY_FROZEN",
+  "runner": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6",
+  "sourceSha256": "446022445b74eaff650e56d6837aa91896681d4ba3247028355cc2c57f66cb70",
+  "deployer": "0x87B7a94B704e0C422efceB2460110Ee2B9cF92A1",
+  "contractAddress": "0xffa5207C24e8Cd115c734eef23f2d891A4781F84",
+  "deploymentTransaction": "0x25fc98f44aa81afafe815b06f5fadf7a6d5cff4aef1eb69d509c119f42034d66",
+  "deployedAt": "2026-08-30T18:09:46.074272+07:00",
+  "readback": {
+    "caseCount": 0
+  }
+}

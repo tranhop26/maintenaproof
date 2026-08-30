@@ -124,8 +124,12 @@ export interface WaitInput {
   interval?: number;
 }
 export interface GenLayerReceipt {
+  status?: string | number;
   statusName?: string;
   txExecutionResultName?: string;
+  consensus_data?: {
+    leader_receipt?: Array<{ execution_result?: string }>;
+  };
 }
 
 export interface GenLayerClientPort {

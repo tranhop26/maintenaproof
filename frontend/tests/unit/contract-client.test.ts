@@ -97,6 +97,27 @@ describe("truthful write progress", () => {
     ]);
   });
 
+  it("accepts the raw finalized Studionet receipt after leader success", async () => {
+    const stages: TransactionStage[] = [];
+    const client = new MaintenaProofClient(
+      port({
+        waitForTransactionReceipt: vi.fn().mockResolvedValue({
+          status: "FINALIZED",
+          consensus_data: {
+            leader_receipt: [{ execution_result: "SUCCESS" }],
+          },
+        }),
+      }),
+      address,
+      owner,
+    );
+
+    const result = await client.createCase(input, (p) => stages.push(p.stage));
+
+    expect(result.ok).toBe(true);
+    expect(stages).toContain("READBACK_CONFIRMED");
+  });
+
   it("terminates progress when the wallet rejects before a hash exists", async () => {
     const stages: TransactionStage[] = [];
     const client = new MaintenaProofClient(

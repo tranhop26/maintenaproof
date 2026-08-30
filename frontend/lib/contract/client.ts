@@ -109,19 +109,23 @@ export class MaintenaProofClient {
         retries: 120,
         interval: 5_000,
       });
-      if (receipt.statusName !== "FINALIZED") {
-        throw new Error(`Transaction stopped at ${receipt.statusName ?? "UNKNOWN"}`);
+      const receiptStatus = receipt.statusName ?? receipt.status;
+      if (receiptStatus !== "FINALIZED" && receiptStatus !== 7) {
+        throw new Error(`Transaction stopped at ${receiptStatus ?? "UNKNOWN"}`);
       }
       onProgress({ stage: "FINALIZED", hash });
+      const executionResult =
+        receipt.txExecutionResultName ??
+        receipt.consensus_data?.leader_receipt?.[0]?.execution_result;
       if (
-        receipt.txExecutionResultName !== "SUCCESS" &&
-        receipt.txExecutionResultName !== "FINISHED_WITH_RETURN"
+        executionResult !== "SUCCESS" &&
+        executionResult !== "FINISHED_WITH_RETURN"
       ) {
         onProgress({ stage: "EXECUTION_ERROR", hash });
         return {
           ok: false,
           hash,
-          error: `Contract execution: ${receipt.txExecutionResultName ?? "UNKNOWN"}`,
+          error: `Contract execution: ${executionResult ?? "UNKNOWN"}`,
         };
       }
       onProgress({ stage: "EXECUTION_SUCCESS", hash });
