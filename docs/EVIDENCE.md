@@ -19,7 +19,7 @@ Verification status: **CONTRACT, LIVE FLOWS, AND PRODUCTION FRONTEND VERIFIED**.
 
 - Repository: <https://github.com/tranhop26/maintenaproof>
 - Deployed source commit: `27fa37d01f24c8804b1c65caa7e2941feba65b5d`
-- Verified receipt/live-test implementation commit: `93620903ebceb380b6b5480e7e257e56042ec4d2` (local, pending the required push confirmation).
+- Current verified repository commit: `7369403a9035454ee26b31911b3fb27e76d3760b`, pushed to `main` (includes receipt/live-test commit `93620903ebceb380b6b5480e7e257e56042ec4d2`).
 - Contract source SHA-256: `446022445b74eaff650e56d6837aa91896681d4ba3247028355cc2c57f66cb70`
 - Transaction-embedded source SHA-256: exact match.
 - Classification: `INTENTIONALLY_FROZEN`.
@@ -30,6 +30,8 @@ Verification status: **CONTRACT, LIVE FLOWS, AND PRODUCTION FRONTEND VERIFIED**.
 - Vercel project/team: `maintenaproof` / `tdh-s-projects`.
 - Production URL: <https://maintenaproof.vercel.app>.
 - Initial Vercel deployment: `dpl_EG6fxfH3Hm87myzjf9fYBXmdzqso`, built from commit `468d90ac6b67a54b8a925d304bd0a78d7a1a25ea` with root `frontend`.
+- Git-integrated verified deployment: `dpl_DQRkfzP5G77SpzjsGNjuNXABcGTC`, built from commit `7369403a9035454ee26b31911b3fb27e76d3760b`, `READY`.
+- Environment-token production deployment: [`dpl_3T1ogotSGvJFefy84NCKhtxknkgg`](https://vercel.com/tdh-s-projects/maintenaproof/3T1ogotSGvJFefy84NCKhtxknkgg), `READY`, aliased to the production URL. The one-hour token was supplied only through `VERCEL_TOKEN`; temporary token and downloaded OIDC files were removed after deployment.
 
 ## Verification results
 
@@ -65,6 +67,3 @@ transactions and certificate readback above.
   equipment identity.
 - `NON_COMPLIANT` requires affirmative evidence; absence alone is never failure.
 - A frozen deployment cannot be patched in place; recovery uses a new address.
-- Vercel was deployed through the user-authorized authenticated Chrome session;
-  the originally requested `VERCEL_TOKEN` CLI path was not exercised because
-  that environment variable was absent.

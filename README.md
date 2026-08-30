@@ -109,7 +109,8 @@ The script waits for `FINALIZED`, checks zero-case readback, and writes a public
 manifest under `deployments/`. After confirming the Vercel account/team/project:
 
 ```powershell
-vercel deploy --prod --cwd frontend --token $env:VERCEL_TOKEN
+vercel link --yes --project maintenaproof --scope tdh-s-projects --token $env:VERCEL_TOKEN
+vercel deploy --prod --yes --scope tdh-s-projects --token $env:VERCEL_TOKEN
 ```
 
 ## Known limitations
