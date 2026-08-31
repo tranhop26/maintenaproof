@@ -23,6 +23,8 @@ jobs:
         env: { PYTHONUTF8: "1" }
       - run: pytest --collect-only tests/integration -q
         env: { PYTHONUTF8: "1" }
+      - run: pnpm typecheck:deploy
+      - run: node --test deploy/receipt.test.ts
       - run: pnpm --dir frontend test
       - run: pnpm --dir frontend lint
       - run: pnpm --dir frontend typecheck

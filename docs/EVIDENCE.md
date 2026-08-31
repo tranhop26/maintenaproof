@@ -14,28 +14,28 @@ Verification status: **CONTRACT, LIVE FLOWS, AND PRODUCTION FRONTEND VERIFIED**.
 | Unauthorized owner | Attempt provider-only submission | `submit_evidence` | [`0xb210…0e9f3`](https://explorer-studio.genlayer.com/tx/0xb210c9e631afeafcf69a80c8a506dc8576ddcbfaf48c646dd01fc4c6b510e9f3) | `FINALIZED`, execution error `only provider` | case 1 remains `DRAFT`; evidence count remains 0 | `frontend/tests/integration/live-contract-flow.test.ts` |
 | Browser wallet `0x21b4…2eC7` | Create production-UI case 2 | `create_case` | [`0xa94f…585f6`](https://explorer-studio.genlayer.com/tx/0xa94f4f583741b0157c3771afe2682d0314a0b8e953548378cdbd146369d585f6) | `FINALIZED`, success | case 2 `DRAFT`; owner/provider and immutable bindings match | production browser + CLI readback |
 | Browser wallet `0x21b4…2eC7` | Submit wrong-host evidence | client validation before `submit_evidence` | No transaction created | submit disabled | case 2 remains `DRAFT`; evidence count remains 0 | production browser validation |
+| Provider `0x21b4…2eC7` | Submit deliberately mismatched public evidence v1 | `submit_evidence` | [`0x2bc3…8085`](https://explorer-studio.genlayer.com/tx/0x2bc3ce539836a518b5baf08baec9edfc963bb047a1db2a448b0bc63189708085) | `FINALIZED`, `SUCCESS` | case 2 `SUBMITTED`; evidence v1; replay domain `a8b370a8…dc88f` | production browser + SDK receipt/readback |
+| Evaluator `0x21b4…2eC7` | Evaluate mismatched evidence | `evaluate` | [`0xe446…7f05`](https://explorer-studio.genlayer.com/tx/0xe446948082e92acdd1128d5c9f9f4db7e9e6aacc4477e7dafdc2425392c37f05) | `FINALIZED`, `SUCCESS` | case 2 `UNRESOLVED`; reason `INVALID_OR_UNSAFE_RESULT`; fingerprint `6618c912…a5f3` | production browser + SDK receipt/readback |
 
 ## Source and deployment identity
 
 - Repository: <https://github.com/tranhop26/maintenaproof>
 - Deployed source commit: `27fa37d01f24c8804b1c65caa7e2941feba65b5d`
-- Current verified repository commit: `7369403a9035454ee26b31911b3fb27e76d3760b`, pushed to `main` (includes receipt/live-test commit `93620903ebceb380b6b5480e7e257e56042ec4d2`).
+- Verified application commit before this evidence-only cleanup: `ef75442036c3cc439be9e084592e9d1169ea8ba3`. The exact submission commit is the immutable Git commit containing this file and is reported with the delivery links.
 - Contract source SHA-256: `446022445b74eaff650e56d6837aa91896681d4ba3247028355cc2c57f66cb70`
 - Transaction-embedded source SHA-256: exact match.
 - Classification: `INTENTIONALLY_FROZEN`.
 - Contract: [`0xffa5207C24e8Cd115c734eef23f2d891A4781F84`](https://explorer-studio.genlayer.com/address/0xffa5207C24e8Cd115c734eef23f2d891A4781F84)
 - Deployment: [`0x25fc98f44aa81afafe815b06f5fadf7a6d5cff4aef1eb69d509c119f42034d66`](https://explorer-studio.genlayer.com/tx/0x25fc98f44aa81afafe815b06f5fadf7a6d5cff4aef1eb69d509c119f42034d66), `FINALIZED`, `MAJORITY_AGREE`.
 - Deployment manifest: `deployments/studionet-0xffa5207c24e8cd115c734eef23f2d891a4781f84.json`.
-- Initial readback: `case_count = 0`; post-production-browser readback: `case_count = 3`.
+- Initial readback: `case_count = 0`; current readback: `case_count = 3`, including case 0 `COMPLIANT` and case 2 `UNRESOLVED`.
 - Vercel project/team: `maintenaproof` / `tdh-s-projects`.
 - Production URL: <https://maintenaproof.vercel.app>.
-- Initial Vercel deployment: `dpl_EG6fxfH3Hm87myzjf9fYBXmdzqso`, built from commit `468d90ac6b67a54b8a925d304bd0a78d7a1a25ea` with root `frontend`.
-- Git-integrated verified deployment: `dpl_DQRkfzP5G77SpzjsGNjuNXABcGTC`, built from commit `7369403a9035454ee26b31911b3fb27e76d3760b`, `READY`.
-- Environment-token production deployment: [`dpl_3T1ogotSGvJFefy84NCKhtxknkgg`](https://vercel.com/tdh-s-projects/maintenaproof/3T1ogotSGvJFefy84NCKhtxknkgg), `READY`, aliased to the production URL. The one-hour token was supplied only through `VERCEL_TOKEN`; temporary token and downloaded OIDC files were removed after deployment.
+- Production deployment is performed from the confirmed submission commit with `VERCEL_TOKEN`, checked `READY`, and aliased to the stable production URL. Deployment-specific ID and inspector URL are reported with the delivery links so this file does not become stale after an evidence-only deployment.
 
 ## Verification results
 
-Observed on 2026-08-30:
+Observed on 2026-08-30 and rechecked on 2026-08-31:
 
 - Contract lint: pass (3 checks); contract validation pass (9 public methods).
 - Direct contract tests: 68 passed.
@@ -49,8 +49,9 @@ Observed on 2026-08-30:
 - Local responsive browser QA: desktop and 375×812, no horizontal overflow,
   console errors, or fabricated cases in unconfigured mode.
 - Production browser QA: connected wallet `0x21b4…2eC7`; real contract readback;
-  successful create transaction; wrong-host validation branch; 375×812 with no
-  horizontal overflow; no application console errors.
+  successful create and evidence transactions; wrong-host validation branch;
+  live `UNRESOLVED` evaluation; 375×812 with no horizontal overflow; no
+  application console errors.
 
 Python Studionet integration exercises valid and mismatched evidence. Because
 validator output is nondeterministic, valid evidence may produce either a
@@ -66,4 +67,6 @@ transactions and certificate readback above.
 - Declared asset hashes bind records but do not independently prove physical
   equipment identity.
 - `NON_COMPLIANT` requires affirmative evidence; absence alone is never failure.
+- `NON_COMPLIANT` is covered by direct tests but does not have a fixed live
+  Studionet transaction in this evidence package.
 - A frozen deployment cannot be patched in place; recovery uses a new address.

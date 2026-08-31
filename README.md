@@ -43,7 +43,8 @@ MaintenanceProof Intelligent Contract
 
 The contract is `INTENTIONALLY_FROZEN`: there is no proxy, admin outcome
 override, or storage migration. Recovery is a reviewed new deployment with old
-addresses preserved; see [docs/RECOVERY.md](docs/RECOVERY.md).
+addresses preserved; see [docs/DESIGN.md](docs/DESIGN.md) and
+[docs/RECOVERY.md](docs/RECOVERY.md).
 
 Studionet deployment: [`0xffa5207C24e8Cd115c734eef23f2d891A4781F84`](https://explorer-studio.genlayer.com/address/0xffa5207C24e8Cd115c734eef23f2d891A4781F84), deployed in transaction [`0x25fc…34d66`](https://explorer-studio.genlayer.com/tx/0x25fc98f44aa81afafe815b06f5fadf7a6d5cff4aef1eb69d509c119f42034d66). The public manifest is under `deployments/` and the observed proof matrix is in [docs/EVIDENCE.md](docs/EVIDENCE.md).
 
@@ -71,6 +72,7 @@ genvm-lint check contracts/maintenance_proof.py
 pytest tests/direct -v
 pytest --collect-only tests/integration -q
 pnpm typecheck:deploy
+node --test deploy/receipt.test.ts
 pnpm --dir frontend test
 pnpm --dir frontend lint
 pnpm --dir frontend typecheck
@@ -119,6 +121,8 @@ vercel deploy --prod --yes --scope tdh-s-projects --token $env:VERCEL_TOKEN
   private maintenance systems are out of scope.
 - No escrow, stake, payment, notification service, or backend account database.
 - `NON_COMPLIANT` requires affirmative evidence; absence alone is never failure.
+- `NON_COMPLIANT` is covered by direct tests but has no fixed live Studionet
+  transaction in the submitted proof matrix.
 - A frozen deployment cannot be patched in place; recovery uses a new address.
 - Validator output is nondeterministic by design; even apparently valid public
   evidence may safely resolve to `UNRESOLVED` rather than being approved.
