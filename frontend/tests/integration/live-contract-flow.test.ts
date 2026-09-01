@@ -18,14 +18,16 @@ function adapter(key: `0x${string}`) {
   return { account, client: new MaintenaProofClient(sdk, contractAddress!, account.address) };
 }
 
-function evidenceUrl(provider: Address): string {
-  const report = JSON.stringify({
-    asset_hash: "a".repeat(64), cycle_id: "cycle-e2e", evidence_version: 1,
-    policy_version: "hvac-v1", provider, service_date: "2026-08-15",
-    report_issue_date: "2026-08-16",
-    completed: ["replace intake filter", "verify outlet pressure 80-120 psi"],
-  });
-  return `https://httpbin.org/base64/${encodeURIComponent(Buffer.from(report).toString("base64"))}`;
+function serviceRecord(caseId: bigint) {
+  return {
+    caseId, version: 1n, serviceDate: "2026-08-15",
+    issuedAt: "2026-08-16T10:00:00Z", expiresAt: "2026-09-30T23:59:59Z",
+    nonce: `e2e-${caseId}`, completedActions: [
+      "replace intake filter", "verify outlet pressure 80-120 psi",
+    ],
+    measurements: [{ name: "outlet pressure", value: "100", unit: "psi" }],
+    attachments: [], notes: "E2E issuer record",
+  };
 }
 
 describe.skipIf(!configured)("deployed frontend-to-contract flow", () => {
@@ -33,15 +35,15 @@ describe.skipIf(!configured)("deployed frontend-to-contract flow", () => {
     const owner = adapter(ownerKey!); const provider = adapter(providerKey!); const evaluator = adapter(evaluatorKey!);
     const stages: TransactionStage[] = [];
     const created = await owner.client.createCase({
-      assetHash: "a".repeat(64), provider: provider.account.address,
-      evidenceHostname: "httpbin.org",
+      assetHash: "a".repeat(64), issuer: provider.account.address,
+      provider: provider.account.address,
       policy: "Replace the intake filter and verify outlet pressure is 80-120 psi.",
       policyVersion: "hvac-v1", cycleId: "cycle-e2e",
       cycleStart: "2026-07-01", cycleEnd: "2026-09-30",
     }, p => stages.push(p.stage));
     expect(created.ok).toBe(true); if (!created.ok) return;
     const caseId = BigInt(created.caseRecord.id);
-    const submitted = await provider.client.submitEvidence({ caseId, url: evidenceUrl(provider.account.address), version: 1n }, () => undefined);
+    const submitted = await provider.client.submitServiceRecord(serviceRecord(caseId), () => undefined);
     expect(submitted.ok).toBe(true);
     const evaluated = await evaluator.client.evaluate(caseId, () => undefined);
     expect(evaluated.ok).toBe(true);
@@ -60,23 +62,17 @@ describe.skipIf(!configured)("deployed frontend-to-contract flow", () => {
   it("rejects an owner replaying the provider submission role", async () => {
     const owner = adapter(ownerKey!); const provider = adapter(providerKey!);
     const created = await owner.client.createCase({
-      assetHash: "b".repeat(64), provider: provider.account.address,
-      evidenceHostname: "httpbin.org",
+      assetHash: "b".repeat(64), issuer: provider.account.address,
+      provider: provider.account.address,
       policy: "Replace the intake filter and verify outlet pressure is 80-120 psi.",
       policyVersion: "hvac-v1", cycleId: "cycle-e2e-authz",
       cycleStart: "2026-07-01", cycleEnd: "2026-09-30",
     }, () => undefined);
     expect(created.ok).toBe(true); if (!created.ok) return;
     const caseId = BigInt(created.caseRecord.id);
-    const stages: TransactionStage[] = [];
-    const rejected = await owner.client.submitEvidence(
-      { caseId, url: evidenceUrl(provider.account.address), version: 1n },
-      progress => stages.push(progress.stage),
-    );
-    expect(rejected.ok).toBe(false);
-    expect(rejected.hash).toMatch(/^0x/);
-    expect(stages).toContain("FINALIZED");
-    expect(stages).toContain("EXECUTION_ERROR");
-    expect((await owner.client.getCase(caseId)).status).toBe("DRAFT");
+    await expect(owner.client.submitServiceRecord(
+      serviceRecord(caseId), () => undefined,
+    )).rejects.toThrow(/issuer/i);
+    expect((await owner.client.getCase(caseId)).status).toBe("AWAITING_RECORD");
   }, 180_000);
 });
