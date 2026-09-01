@@ -1,7 +1,7 @@
 export type Address = `0x${string}`;
 
 export type CaseStatus =
-  | "DRAFT"
+  | "AWAITING_RECORD"
   | "SUBMITTED"
   | "COMPLIANT"
   | "NON_COMPLIANT"
@@ -34,37 +34,52 @@ export interface CaseRecord {
   cycle_id: string;
   cycle_start: string;
   evidence_count: number;
-  evidence_hostname: string;
   id: number;
+  issuer: Address;
   latest_evidence_version: number;
   owner: Address;
   policy: string;
+  policy_hash: string;
   policy_version: string;
   provider: Address;
+  record_schema: string;
   status: CaseStatus;
 }
 
 export interface EvidenceRecord {
   case_id: number;
   evaluated: boolean;
+  expires_at: string;
+  issued_at: string;
+  issuer: Address;
+  nonce: string;
+  record_digest: string;
+  record_json: string;
   replay_domain: string;
   revision_index: number;
-  url: string;
+  service_date: string;
+  submitted_at: string;
   version: number;
 }
 
 export interface DecisionFindings {
   asset_hash: string;
+  case_id: number;
   completed: string[];
   contradictions: string[];
   cycle_id: string;
-  evidence_version: number;
+  expires_at: string;
+  issued_at: string;
+  issuer: Address;
   missing: string[];
   outcome: "COMPLIANT" | "NON_COMPLIANT" | "UNRESOLVED";
+  policy_hash: string;
   policy_version: string;
   provider: Address;
   reason: string;
-  report_issue_date: string;
+  record_digest: string;
+  record_schema: string;
+  record_version: number;
   service_date: string;
 }
 
@@ -73,30 +88,53 @@ export interface ResolutionAttempt {
   case_id: number;
   evaluator: Address;
   evidence_version: number;
+  expires_at: string;
   findings: DecisionFindings;
   fingerprint: string;
+  issued_at: string;
+  issuer: Address;
   outcome: DecisionFindings["outcome"];
+  policy_hash: string;
+  policy_version: string;
+  provider: Address;
+  record_digest: string;
+  record_schema: string;
+  record_version: number;
+  service_date: string;
 }
 
 export interface Certificate {
   asset_hash: string;
   case_id: number;
+  chain_id: number;
+  completed: string[];
   contract_address: Address;
+  contradictions: string[];
   cycle_end: string;
   cycle_id: string;
   cycle_start: string;
   evidence_version: number;
+  expires_at: string;
   findings: DecisionFindings;
   fingerprint: string;
+  issued_at: string;
+  issuer: Address;
+  missing: string[];
+  outcome: "COMPLIANT";
   policy: string;
+  policy_hash: string;
   policy_version: string;
   provider: Address;
+  record_digest: string;
+  record_schema: string;
+  record_version: number;
+  service_date: string;
 }
 
 export interface CreateCaseInput {
   assetHash: string;
+  issuer: Address;
   provider: Address;
-  evidenceHostname: string;
   policy: string;
   policyVersion: string;
   cycleId: string;
@@ -104,10 +142,28 @@ export interface CreateCaseInput {
   cycleEnd: string;
 }
 
-export interface SubmitEvidenceInput {
+export interface ServiceMeasurement {
+  name: string;
+  value: string;
+  unit: string;
+}
+
+export interface ServiceAttachment {
+  uri: string;
+  sha256: string;
+}
+
+export interface SubmitServiceRecordInput {
   caseId: bigint;
-  url: string;
   version: bigint;
+  serviceDate: string;
+  issuedAt: string;
+  expiresAt: string;
+  nonce: string;
+  completedActions: string[];
+  measurements: ServiceMeasurement[];
+  attachments: ServiceAttachment[];
+  notes: string;
 }
 
 export interface ReadInput {
