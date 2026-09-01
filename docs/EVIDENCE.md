@@ -15,6 +15,16 @@ ZERO-CASE READBACK VERIFIED. LIVE ACTOR-FLOW EVIDENCE IS STILL PENDING.**
 - Explorer source SHA-256 after LF normalization: `4e19a9eeea0d4d9a568f55bee916405d134f1479632af4bfb97d5b54872e8793`
 - Manifest: `deployments/studionet-0x5caeafab4c12f905d9fbd37461d02abfe4b78e89.json`
 
+## V2 frontend promotion
+
+- GitHub branch: [`feat/immutable-evidence-v2`](https://github.com/tranhop26/maintenaproof/tree/feat/immutable-evidence-v2)
+- Vercel project: `tdh-s-projects/maintenaproof`
+- Production deployment: `dpl_8bwVwxdxE9zQ7MVndjSFwEnoySuV` (`READY`)
+- Production site: [maintenaproof.vercel.app](https://maintenaproof.vercel.app)
+- Public contract configuration: `0x5CaeAfaB4C12F905D9fbd37461d02AbFE4b78e89`
+- Production readback: dashboard displayed `0 ON-CHAIN RECORDS` and no
+  fabricated fallback data; V2 create-case fields rendered successfully.
+
 ## V2 proof matrix
 
 | Claim | Current evidence | External evidence required before promotion |

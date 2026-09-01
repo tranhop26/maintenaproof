@@ -17,5 +17,21 @@
   "readback": {
     "state": "Finalized",
     "caseCount": 0
+  },
+  "frontendPromotion": {
+    "githubRepository": "https://github.com/tranhop26/maintenaproof",
+    "githubBranch": "feat/immutable-evidence-v2",
+    "deployedCommit": "04cd2cf9d47545bbdca568a6ff25c027f5b939cc",
+    "vercelTeam": "tdh-s-projects",
+    "vercelProject": "maintenaproof",
+    "deploymentId": "dpl_8bwVwxdxE9zQ7MVndjSFwEnoySuV",
+    "deploymentUrl": "https://maintenaproof-qcb3onpqn-tdh-s-projects.vercel.app",
+    "productionUrl": "https://maintenaproof.vercel.app",
+    "status": "READY",
+    "contractAddress": "0x5CaeAfaB4C12F905D9fbd37461d02AbFE4b78e89",
+    "verifiedReadback": {
+      "caseCount": 0,
+      "observedAt": "2026-09-01T20:43:24+07:00"
+    }
   }
 }
