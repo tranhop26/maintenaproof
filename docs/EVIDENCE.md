@@ -1,7 +1,19 @@
 # MaintenaProof verification evidence
 
-Verification status: **V2 LOCAL REVIEW IN PROGRESS; DEPLOYMENT NOT AUTHORIZED OR
-PERFORMED**.
+Verification status: **V2 DEPLOYED TO STUDIONET; DEPLOYMENT FINALIZED AND
+ZERO-CASE READBACK VERIFIED. LIVE ACTOR-FLOW EVIDENCE IS STILL PENDING.**
+
+## V2 Studionet deployment
+
+- Contract: [`0x5Cae…8e89`](https://explorer-studio.genlayer.com/address/0x5CaeAfaB4C12F905D9fbd37461d02AbFE4b78e89)
+- Deployment transaction: [`0xb5b6…31dc1`](https://explorer-studio.genlayer.com/tx/0xb5b683a01a3e9a96018c023dbbf555216ca5122ee25f4a08edc0be64f8b31dc1)
+- Deployer: `0x21b45103dd05c43969daF3CbB4277391777e2eC7`
+- Network: Studionet, chain `61999`
+- Finalized readback: `case_count = 0`
+- Reviewed commit: `a54523b630f76f6ac4c40f87dbb1622677240f9a`
+- Reviewed source SHA-256: `8dfa67c391611303b2cc4217e0754bac79ae59588e93ca2bf87d10ee4f3a9829`
+- Explorer source SHA-256 after LF normalization: `4e19a9eeea0d4d9a568f55bee916405d134f1479632af4bfb97d5b54872e8793`
+- Manifest: `deployments/studionet-0x5caeafab4c12f905d9fbd37461d02abfe4b78e89.json`
 
 ## V2 proof matrix
 
@@ -21,8 +33,9 @@ Current local checkpoints on 2026-09-01:
 - Direct contract tests: 86 passed, including independent recomputation vectors.
 - Frontend tests: 36 passed; 2 environment-gated live tests skipped.
 - Frontend lint, typecheck, and production build: pass.
-- Studionet integration suite: collection pending final full verification; no
-  V2 deployment transactions have been created.
+- Studionet integration suite: 2 environment-gated tests collect successfully.
+- V2 deployment is finalized and its zero-case readback is verified. The live
+  actor-flow evidence listed below has not yet been created.
 
 ## Legacy V1 evidence
 
@@ -35,15 +48,13 @@ URL-based workflow. They do not prove issuer authentication, immutable evidence
 bytes, digest-bound verdicts, or V2 certificate fields. The existing production
 site is likewise legacy until a separately confirmed V2 promotion.
 
-## Evidence required after authorization
+## Remaining evidence before production promotion
 
-Before calling V2 deployed or production-ready, record the exact reviewed
-commit/source hash, deployment wallet, contract address, deployment transaction,
-manifest, zero-case readback, actor transaction hashes, execution results,
-record digest recomputation, certificate fingerprint recomputation, GitHub
-remote/account, and Vercel team/project/deployment. Every promoted transaction
-must be `FINALIZED` with successful execution and matching post-transaction
-readback.
+Before calling V2 production-ready, record the actor transaction hashes,
+execution results, record digest recomputation, certificate fingerprint
+recomputation, GitHub remote/account, and Vercel team/project/deployment. Every
+promoted transaction must be `FINALIZED` with successful execution and matching
+post-transaction readback.
 
 ## Known limitations
 

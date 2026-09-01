@@ -1,0 +1,21 @@
+{
+  "network": "studionet",
+  "chainId": 61999,
+  "classification": "INTENTIONALLY_FROZEN",
+  "version": "2",
+  "runner": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6",
+  "reviewedCommit": "a54523b630f76f6ac4c40f87dbb1622677240f9a",
+  "reviewedSourceSha256": "8dfa67c391611303b2cc4217e0754bac79ae59588e93ca2bf87d10ee4f3a9829",
+  "deployedSourceSha256": "4e19a9eeea0d4d9a568f55bee916405d134f1479632af4bfb97d5b54872e8793",
+  "sourceNormalization": "The reviewed Windows working-tree file used mixed CRLF/LF line endings. GenLayer Studio normalized line endings to LF; normalized reviewed source and Explorer contract_code are byte-identical.",
+  "deployer": "0x21b45103dd05c43969daF3CbB4277391777e2eC7",
+  "contractAddress": "0x5CaeAfaB4C12F905D9fbd37461d02AbFE4b78e89",
+  "deploymentTransaction": "0xb5b683a01a3e9a96018c023dbbf555216ca5122ee25f4a08edc0be64f8b31dc1",
+  "deployedAt": "2026-09-01T20:32:56+07:00",
+  "status": "FINALIZED",
+  "consensusResult": "Accepted",
+  "readback": {
+    "state": "Finalized",
+    "caseCount": 0
+  }
+}
