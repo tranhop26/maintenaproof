@@ -1,41 +1,49 @@
-"""Canonical semantic decisions used by direct contract tests."""
+"""Canonical V2 semantic decisions used by direct contract tests."""
 
 
-def compliant_result(provider_hex: str, *, version: int = 1) -> dict:
+def compliant_result(case: dict, evidence: dict) -> dict:
     return {
         "outcome": "COMPLIANT",
-        "asset_hash": "a" * 64,
-        "cycle_id": "cycle-2026-q3",
-        "provider": provider_hex,
-        "evidence_version": version,
-        "policy_version": "hvac-v1",
-        "service_date": "2026-08-15",
-        "report_issue_date": "2026-08-16",
+        "case_id": case["id"],
+        "issuer": case["issuer"],
+        "provider": case["provider"],
+        "asset_hash": case["asset_hash"],
+        "record_digest": evidence["record_digest"],
+        "record_schema": case["record_schema"],
+        "record_version": evidence["version"],
+        "policy_hash": case["policy_hash"],
+        "policy_version": case["policy_version"],
+        "cycle_id": case["cycle_id"],
+        "service_date": evidence["service_date"],
+        "issued_at": evidence["issued_at"],
+        "expires_at": evidence["expires_at"],
         "completed": [
             "replace intake filter",
             "verify outlet pressure 80-120 psi",
         ],
         "missing": [],
         "contradictions": [],
-        "reason": "Both locked obligations are evidenced within the cycle.",
+        "reason": "All locked obligations are demonstrated by the record.",
     }
 
 
-def non_compliant_result(provider_hex: str) -> dict:
-    result = compliant_result(provider_hex)
+def non_compliant_result(case: dict, evidence: dict) -> dict:
+    result = compliant_result(case, evidence)
     result.update(
         {
             "outcome": "NON_COMPLIANT",
             "completed": ["replace intake filter"],
             "missing": ["verify outlet pressure 80-120 psi"],
-            "reason": "The report affirmatively states that pressure was not verified.",
+            "reason": "The record affirmatively says pressure was not verified.",
         }
     )
     return result
 
 
-def unresolved_result(provider_hex: str, *, reason: str = "INSUFFICIENT") -> dict:
-    result = compliant_result(provider_hex)
+def unresolved_result(
+    case: dict, evidence: dict, *, reason: str = "INSUFFICIENT"
+) -> dict:
+    result = compliant_result(case, evidence)
     result.update(
         {
             "outcome": "UNRESOLVED",
