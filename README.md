@@ -39,9 +39,11 @@ See [design](docs/DESIGN.md), [recovery](docs/RECOVERY.md), and
 
 ## Deployment status
 
-V2 is reviewed locally and requires a **new contract address** because the
-contract is `INTENTIONALLY_FROZEN`. It has not been deployed or promoted by this
-change.
+V2 is deployed on Studionet at
+[`0x5Cae…8e89`](https://explorer-studio.genlayer.com/address/0x5CaeAfaB4C12F905D9fbd37461d02AbFE4b78e89).
+Its [deployment transaction](https://explorer-studio.genlayer.com/tx/0xb5b683a01a3e9a96018c023dbbf555216ca5122ee25f4a08edc0be64f8b31dc1)
+is finalized, and finalized-state readback returned `case_count = 0`. The V2
+frontend has not yet been promoted to the production Vercel site.
 
 The existing Studionet contract
 [`0xffa…1F84`](https://explorer-studio.genlayer.com/address/0xffa5207C24e8Cd115c734eef23f2d891A4781F84)
