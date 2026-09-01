@@ -176,7 +176,15 @@ export class MaintenaProofClient {
       (record) =>
         record.id === Number(caseId) &&
         record.status === "AWAITING_RECORD" &&
+        record.asset_hash === input.assetHash &&
         record.issuer.toLowerCase() === input.issuer.toLowerCase() &&
+        record.provider.toLowerCase() === input.provider.toLowerCase() &&
+        record.policy === input.policy &&
+        record.policy_version === input.policyVersion &&
+        record.cycle_id === input.cycleId &&
+        record.cycle_start === input.cycleStart &&
+        record.cycle_end === input.cycleEnd &&
+        record.record_schema === "maintenaproof.service-record.v2" &&
         record.owner.toLowerCase() === this.walletAddress?.toLowerCase(),
       caseId,
       onProgress,
@@ -202,6 +210,7 @@ export class MaintenaProofClient {
       throw new Error("Only the bound issuer wallet can submit a service record");
     }
     assertServiceRecordInput(input);
+    const expectedEvidenceCount = current.evidence_count + 1;
     return this.write(
       "submit_service_record",
       [
@@ -218,7 +227,9 @@ export class MaintenaProofClient {
       ],
       (record) =>
         record.status === "SUBMITTED" &&
-        record.latest_evidence_version === Number(input.version),
+        record.latest_evidence_version === Number(input.version) &&
+        record.evidence_count === expectedEvidenceCount &&
+        record.issuer.toLowerCase() === current.issuer.toLowerCase(),
       input.caseId,
       onProgress,
     );

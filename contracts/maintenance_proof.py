@@ -281,6 +281,8 @@ class MaintenanceProof(gl.Contract):
             )
         ):
             return fallback
+        if not _valid_printable(raw["reason"], 1, 1000):
+            return fallback
         for key, expected in bindings.items():
             if raw[key] != expected:
                 return fallback

@@ -36,6 +36,7 @@ export default function CasePage() {
   const refresh = () => { void record.refetch(); void certificate.refetch(); void evidence.refetch(); void attempts.refetch(); };
   const writesReady = wallet.isConnected && wallet.isCorrectNetwork;
   const issuerCanSubmit = writesReady && wallet.address?.toLowerCase() === item.issuer.toLowerCase() && ["AWAITING_RECORD", "UNRESOLVED"].includes(item.status);
+  const ownerCanCancel = writesReady && item.status === "AWAITING_RECORD" && wallet.address?.toLowerCase() === item.owner.toLowerCase();
   async function cancel() {
     setBusy(true); setActionError("");
     const result = await client.cancelCase(id, setProgress);
@@ -53,6 +54,7 @@ export default function CasePage() {
     {!wallet.isConnected && <div className="notice">Connect wallet to continue</div>}
     {wallet.isConnected && !wallet.isCorrectNetwork && <div className="notice warning">Switch the connected wallet to GenLayer Studionet before writing.</div>}
     {issuerCanSubmit && <ServiceRecordForm caseId={item.id} nextVersion={item.latest_evidence_version + 1} onDone={refresh} />}
+    {ownerCanCancel && issuerCanSubmit && <button className="button danger" disabled={busy} onClick={() => void cancel()}>Cancel case</button>}
     {writesReady && item.status === "SUBMITTED" && <EvaluatePanel caseId={item.id} onDone={refresh} />}
     {writesReady && item.status !== "SUBMITTED" && !issuerCanSubmit && <CaseActions wallet={wallet.address} caseRecord={item} busy={busy} onCancel={() => void cancel()} onSubmit={() => undefined} onEvaluate={() => undefined} />}
     {actionError && <div className="notice error">{actionError}</div>}

@@ -18,8 +18,8 @@ PERFORMED**.
 Current local checkpoints on 2026-09-01:
 
 - Contract lint and validation: pass; 9 public methods.
-- Direct contract tests: 83 passed.
-- Frontend tests: 35 passed; 2 environment-gated live tests skipped.
+- Direct contract tests: 86 passed, including independent recomputation vectors.
+- Frontend tests: 36 passed; 2 environment-gated live tests skipped.
 - Frontend lint, typecheck, and production build: pass.
 - Studionet integration suite: collection pending final full verification; no
   V2 deployment transactions have been created.

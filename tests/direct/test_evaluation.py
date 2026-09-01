@@ -137,6 +137,8 @@ def test_malformed_model_output_becomes_unresolved(direct_vm, submitted_case, pa
         ("issued_at", []),
         ("outcome", 7),
         ("reason", None),
+        ("reason", ""),
+        ("reason", "r" * 1_001),
     ],
 )
 def test_malformed_scalar_fields_become_unresolved(

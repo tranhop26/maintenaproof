@@ -53,7 +53,9 @@ describe("V2 contract adapter", () => {
 
   it("serializes structured service record arrays for issuer submission", async () => {
     const submitted = { ...caseRecord, status: "SUBMITTED" as const, evidence_count: 1, latest_evidence_version: 1 };
-    const sdk = port({ readContract: vi.fn().mockResolvedValue(JSON.stringify(submitted)) });
+    const sdk = port({ readContract: vi.fn()
+      .mockResolvedValueOnce(JSON.stringify(caseRecord))
+      .mockResolvedValueOnce(JSON.stringify(submitted)) });
     const result = await new MaintenaProofClient(sdk, address, issuer).submitServiceRecord(recordInput, () => undefined);
     expect(result.ok).toBe(true);
     expect(sdk.writeContract).toHaveBeenCalledWith({
@@ -75,6 +77,25 @@ describe("V2 contract adapter", () => {
     expect((await new MaintenaProofClient(executionSdk, address, owner).createCase(createInput, () => undefined)).ok).toBe(false);
     const mismatchSdk = port({ readContract: vi.fn().mockResolvedValueOnce(0).mockResolvedValueOnce(JSON.stringify({ ...caseRecord, status: "SUBMITTED" })) });
     expect(await new MaintenaProofClient(mismatchSdk, address, owner).createCase(createInput, () => undefined)).toMatchObject({ ok: false, error: "Contract readback mismatch" });
+  });
+
+  it("rejects create binding and service evidence-count readback mismatches", async () => {
+    const wrongProvider = port({
+      readContract: vi.fn().mockResolvedValueOnce(0).mockResolvedValueOnce(
+        JSON.stringify({ ...caseRecord, provider: `0x${"9".repeat(40)}` }),
+      ),
+    });
+    expect(await new MaintenaProofClient(wrongProvider, address, owner)
+      .createCase(createInput, () => undefined)).toMatchObject({ ok: false });
+
+    const noAppend = port({
+      readContract: vi.fn().mockResolvedValue(JSON.stringify({
+        ...caseRecord, status: "SUBMITTED", latest_evidence_version: 1,
+        evidence_count: 0,
+      })),
+    });
+    expect(await new MaintenaProofClient(noAppend, address, issuer)
+      .submitServiceRecord(recordInput, () => undefined)).toMatchObject({ ok: false });
   });
 
   it("rejects disconnected/unconfigured clients and malformed JSON", async () => {
