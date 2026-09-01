@@ -75,14 +75,16 @@ def _valid_evidence_url(value: str, hostname: str) -> bool:
 class MaintenanceCase:
     id: u256
     owner: Address
+    issuer: Address
     provider: Address
     asset_hash: str
-    evidence_hostname: str
     policy: str
+    policy_hash: str
     policy_version: str
     cycle_id: str
     cycle_start: str
     cycle_end: str
+    record_schema: str
     status: str
     latest_evidence_version: u256
     evidence_count: u256
@@ -273,15 +275,21 @@ class MaintenanceProof(gl.Contract):
     def create_case(
         self,
         asset_hash: str,
+        issuer: Address,
         provider: Address,
-        evidence_hostname: str,
         policy: str,
         policy_version: str,
         cycle_id: str,
         cycle_start: str,
         cycle_end: str,
     ) -> int:
+        issuer_address = issuer if isinstance(issuer, Address) else Address(issuer)
         provider_address = provider if isinstance(provider, Address) else Address(provider)
+        _require(
+            issuer_address
+            != Address("0x0000000000000000000000000000000000000000"),
+            "issuer required",
+        )
         _require(
             provider_address
             != Address("0x0000000000000000000000000000000000000000"),
@@ -292,7 +300,6 @@ class MaintenanceProof(gl.Contract):
             and re.fullmatch(r"[0-9a-f]{64}", asset_hash) is not None,
             "invalid asset hash",
         )
-        _require(_valid_hostname(evidence_hostname), "invalid hostname")
         _require(isinstance(policy, str) and 20 <= len(policy) <= 2000, "invalid policy")
         _require(_valid_identifier(policy_version), "invalid policy version")
         _require(_valid_identifier(cycle_id), "invalid cycle id")
@@ -306,15 +313,17 @@ class MaintenanceProof(gl.Contract):
         self.cases[case_id] = MaintenanceCase(
             id=case_id,
             owner=gl.message.sender_address,
+            issuer=issuer_address,
             provider=provider_address,
             asset_hash=asset_hash,
-            evidence_hostname=evidence_hostname,
             policy=policy,
+            policy_hash=hashlib.sha256(policy.encode("utf-8")).hexdigest(),
             policy_version=policy_version,
             cycle_id=cycle_id,
             cycle_start=cycle_start,
             cycle_end=cycle_end,
-            status="DRAFT",
+            record_schema="maintenaproof.service-record.v2",
+            status="AWAITING_RECORD",
             latest_evidence_version=u256(0),
             evidence_count=u256(0),
             attempt_count=u256(0),
@@ -327,7 +336,7 @@ class MaintenanceProof(gl.Contract):
     def cancel_case(self, case_id: int) -> None:
         case = self._get_case(case_id)
         _require(gl.message.sender_address == case.owner, "only owner")
-        _require(case.status == "DRAFT", "case is not draft")
+        _require(case.status == "AWAITING_RECORD", "case is not awaiting record")
         case.status = "CANCELLED"
 
     @gl.public.write
@@ -497,13 +506,15 @@ remain equivalent."""
                 "cycle_id": case.cycle_id,
                 "cycle_start": case.cycle_start,
                 "evidence_count": int(case.evidence_count),
-                "evidence_hostname": case.evidence_hostname,
                 "id": int(case.id),
+                "issuer": case.issuer.as_hex,
                 "latest_evidence_version": int(case.latest_evidence_version),
                 "owner": case.owner.as_hex,
                 "policy": case.policy,
+                "policy_hash": case.policy_hash,
                 "policy_version": case.policy_version,
                 "provider": case.provider.as_hex,
+                "record_schema": case.record_schema,
                 "status": case.status,
             }
         )
