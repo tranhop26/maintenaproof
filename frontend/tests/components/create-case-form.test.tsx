@@ -30,4 +30,14 @@ describe("CreateCaseForm wallet gates", () => {
     render(<CreateCaseForm />);
     expect(screen.getByText(/switch.*studionet/i)).toBeVisible();
   });
+
+  it("binds separate issuer/provider wallets and has no mutable evidence host", () => {
+    mocks.wallet.isConnected = true;
+    mocks.wallet.isCorrectNetwork = true;
+    render(<CreateCaseForm />);
+    expect(screen.getByLabelText(/issuer wallet/i)).toBeVisible();
+    expect(screen.getByLabelText(/provider wallet/i)).toBeVisible();
+    expect(screen.queryByLabelText(/evidence hostname/i)).toBeNull();
+    expect(screen.getByText(/issuer wallet signs each service record/i)).toBeVisible();
+  });
 });

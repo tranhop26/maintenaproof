@@ -7,12 +7,12 @@ import type {
   GenLayerClientPort,
   ProgressSink,
   ResolutionAttempt,
-  SubmitEvidenceInput,
+  SubmitServiceRecordInput,
   WriteResult,
 } from "@/lib/contract/types";
 import {
   assertCreateCaseInput,
-  assertEvidenceInput,
+  assertServiceRecordInput,
 } from "@/lib/contract/validation";
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
@@ -165,8 +165,8 @@ export class MaintenaProofClient {
       "create_case",
       [
         input.assetHash,
+        input.issuer,
         input.provider,
-        input.evidenceHostname,
         input.policy,
         input.policyVersion,
         input.cycleId,
@@ -175,7 +175,16 @@ export class MaintenaProofClient {
       ],
       (record) =>
         record.id === Number(caseId) &&
-        record.status === "DRAFT" &&
+        record.status === "AWAITING_RECORD" &&
+        record.asset_hash === input.assetHash &&
+        record.issuer.toLowerCase() === input.issuer.toLowerCase() &&
+        record.provider.toLowerCase() === input.provider.toLowerCase() &&
+        record.policy === input.policy &&
+        record.policy_version === input.policyVersion &&
+        record.cycle_id === input.cycleId &&
+        record.cycle_start === input.cycleStart &&
+        record.cycle_end === input.cycleEnd &&
+        record.record_schema === "maintenaproof.service-record.v2" &&
         record.owner.toLowerCase() === this.walletAddress?.toLowerCase(),
       caseId,
       onProgress,
@@ -192,15 +201,35 @@ export class MaintenaProofClient {
     );
   }
 
-  async submitEvidence(input: SubmitEvidenceInput, onProgress: ProgressSink) {
+  async submitServiceRecord(
+    input: SubmitServiceRecordInput,
+    onProgress: ProgressSink,
+  ) {
     const current = await this.getCase(input.caseId);
-    assertEvidenceInput(input, current.evidence_hostname);
+    if (current.issuer.toLowerCase() !== this.connected().toLowerCase()) {
+      throw new Error("Only the bound issuer wallet can submit a service record");
+    }
+    assertServiceRecordInput(input);
+    const expectedEvidenceCount = current.evidence_count + 1;
     return this.write(
-      "submit_evidence",
-      [input.caseId, input.url, input.version],
+      "submit_service_record",
+      [
+        input.caseId,
+        input.version,
+        input.serviceDate,
+        input.issuedAt,
+        input.expiresAt,
+        input.nonce,
+        JSON.stringify(input.completedActions),
+        JSON.stringify(input.measurements),
+        JSON.stringify(input.attachments),
+        input.notes,
+      ],
       (record) =>
         record.status === "SUBMITTED" &&
-        record.latest_evidence_version === Number(input.version),
+        record.latest_evidence_version === Number(input.version) &&
+        record.evidence_count === expectedEvidenceCount &&
+        record.issuer.toLowerCase() === current.issuer.toLowerCase(),
       input.caseId,
       onProgress,
     );

@@ -1,68 +1,72 @@
-# MaintenaProof design
-
-MaintenaProof lets an equipment owner lock a maintenance policy while a named
-service provider supplies public evidence. Neither party controls the verdict:
-GenLayer validators fetch the bound evidence and the Intelligent Contract
-stores the authoritative result.
+# MaintenaProof V2 design
 
 ## Trust and decision
 
-| Actor | Cannot trust | Can manipulate | Contract defense |
-|---|---|---|---|
-| Owner | Provider | Policy and asset reference | Lock policy, asset hash, provider, hostname and cycle at case creation |
-| Provider | Owner | Evidence URL and revision | Provider-only submission; strictly increasing versions; validator judgment |
-| Evaluator | Both parties | Call timing and replay | Permissionless evaluation of one submitted revision; terminal writes rejected |
-| Verifier | Frontend | Displayed result | Canonical contract readback and certificate fingerprint |
+| Actor | Manipulation capability | Contract defense |
+|---|---|---|
+| Owner | Selects asset, issuer, provider, policy, and cycle | Bind all fields and the policy digest at creation |
+| Issuer | Can make unsupported service claims | Sender-authenticated issuance, bounded canonical record, semantic validator review, no favorable default |
+| Provider | May differ from the issuer | Store service responsibility separately from record issuance |
+| Evaluator | Can time or repeat calls | Permissionless evaluation; deterministic expiry; terminal/evaluated revisions reject repeats |
+| Validators | Can receive malformed or misleading claims | Evaluate exact stored JSON; normalize every identity/digest field; unsafe output becomes `UNRESOLVED` |
+| Frontend | Could display fabricated data | Read record, attempt, and certificate from the contract and expose recomputable digests |
 
-The decision is whether the latest public report proves every locked
-maintenance obligation for the bound asset, provider, cycle, policy version and
-evidence revision.
+The decision is whether the exact canonical record issued by the locked issuer
+demonstrates every obligation in the locked policy, affirmatively demonstrates
+a missing/failed obligation, or is insufficient/unsafe. No actor-facing method
+accepts an outcome.
 
-- `COMPLIANT`: terminal certificate and decision fingerprint.
-- `NON_COMPLIANT`: terminal rejection only when evidence affirmatively proves a
-  missing obligation.
-- `UNRESOLVED`: safe, non-terminal result for unavailable, malformed,
-  mismatched, contradictory or insufficient evidence.
-- Protocol consensus failure: the transaction writes no attempt or state
-  transition; the case remains `SUBMITTED`.
+## Record and replay binding
 
-No owner, provider, evaluator, frontend or backend method can select or rewrite
-an outcome.
+`submit_service_record` accepts service date, UTC issuance/expiry timestamps,
+nonce, completed actions, measurements, attachment references/digests, and
+notes. The contract supplies chain ID, contract address, case ID, issuer,
+provider, asset, policy hash/version, cycle, schema, action, and version. It
+stores the exact canonical JSON and computes `sha256(record_json)`.
 
-## Evidence binding
+Replay protection is:
 
-Each revision binds the chain, contract, case, action, asset hash, provider,
-hostname, policy and version, maintenance cycle, evidence URL and monotonically
-increasing evidence version. The public report supplies its service observation
-date and report issue date; both must fall inside the immutable cycle window.
-The submission transaction supplies the on-chain submission time.
+```text
+sha256(
+  record_schema | chain_id | contract_address | case_id |
+  ISSUE_SERVICE_RECORD | issuer | version | record_digest | nonce
+)
+```
 
-Replay protection is
-`sha256(chain_id | contract_address | case_id | version | evidence_url)`.
-Validators compare all decision-bearing fields semantically. The contract
-normalizes the agreed result and stores a fingerprint that excludes only free
-form reason wording. Evidence failure never defaults to approval.
+Transaction time comes from `gl.message_raw["datetime"]`. Submission rejects
+future-issued, already-expired, or out-of-cycle records. Expiry before evaluation
+is deterministically recorded as `UNRESOLVED / EVIDENCE_EXPIRED` without model
+evaluation.
+
+Validators receive the exact stored record JSON, record digest, policy,
+submission time, and evaluation time. They do not fetch a URL. Every identity,
+digest, schema, version, and timestamp in their result must exactly match storage.
+
+## Certificate binding
+
+For a compliant result, the fingerprint is SHA-256 of canonical JSON containing
+chain ID, contract address, case ID, issuer, provider, record digest/schema/
+version, asset hash, policy hash/version, cycle, outcome, completed/missing/
+contradiction findings, service date, issued time, and expiry time. Free-form
+reason wording is excluded. `get_certificate` exposes every fingerprint field.
 
 ## State machine
 
-| From | Actor | Method | To | Replay behavior |
-|---|---|---|---|---|
-| none | Owner | `create_case` | `DRAFT` | New case ID |
-| `DRAFT` | Owner | `cancel_case` | `CANCELLED` | Rejected after cancellation |
-| `DRAFT` | Provider | `submit_evidence` | `SUBMITTED` | Duplicate or old revision rejected |
-| `UNRESOLVED` | Provider | `submit_evidence` | `SUBMITTED` | Requires a strictly newer revision |
-| `SUBMITTED` | Any wallet | `evaluate` | `COMPLIANT`, `NON_COMPLIANT`, or `UNRESOLVED` | Evaluated or terminal revision rejected |
+| From | Actor | Method | To |
+|---|---|---|---|
+| none | Owner | `create_case` | `AWAITING_RECORD` |
+| `AWAITING_RECORD` | Owner | `cancel_case` | `CANCELLED` |
+| `AWAITING_RECORD` | Issuer | `submit_service_record` | `SUBMITTED` |
+| `UNRESOLVED` | Issuer | `submit_service_record` with newer version | `SUBMITTED` |
+| `SUBMITTED` | Any wallet | `evaluate` | `COMPLIANT`, `NON_COMPLIANT`, or `UNRESOLVED` |
 
-The frontend waits for `FINALIZED`, checks execution success, then confirms the
-expected transition through contract readback. It never advances durable state
-optimistically and contains no production sample records.
+`COMPLIANT`, `NON_COMPLIANT`, and `CANCELLED` are terminal. The frontend waits
+for finalization, checks execution success, and verifies the transition through
+readback.
 
-## Recovery and scope
+## Scope
 
-The contract is `INTENTIONALLY_FROZEN`: no proxy, admin override or privileged
-storage rewrite exists. Recovery deploys reviewed source to a new address while
-preserving the old address and manifests; see `docs/RECOVERY.md`.
-
-The MVP has no escrow, stake, payment, backend adjudicator, private evidence,
-notification service or off-chain account database. Asset hashes bind records
-consistently but do not independently prove physical equipment identity.
+The issuer is a wallet selected by the owner, not a verified company identity.
+Attachments are digest-referenced but their bytes are not fetched or verified.
+The contract is `INTENTIONALLY_FROZEN`; there is no proxy, outcome override, or
+privileged storage rewrite.
