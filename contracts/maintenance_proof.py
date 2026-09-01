@@ -2,6 +2,7 @@
 """MaintenaProof: frozen maintenance-compliance cases on GenLayer."""
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import hashlib
 import json
 import re
@@ -30,6 +31,36 @@ def _valid_identifier(value: str) -> bool:
         and 1 <= len(value) <= 64
         and all(32 <= ord(char) <= 126 for char in value)
     )
+
+
+def _valid_printable(value: str, minimum: int, maximum: int) -> bool:
+    return (
+        isinstance(value, str)
+        and minimum <= len(value) <= maximum
+        and all(32 <= ord(char) <= 126 for char in value)
+    )
+
+
+def _parse_utc_timestamp(value: str) -> int:
+    if not isinstance(value, str) or not re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", value
+    ):
+        return -1
+    try:
+        parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc
+        )
+    except Exception:
+        return -1
+    return int(parsed.timestamp())
+
+
+def _transaction_timestamp() -> tuple[int, str]:
+    raw = gl.message_raw["datetime"]
+    parsed = datetime.fromisoformat(raw.replace("Z", "+00:00")).astimezone(
+        timezone.utc
+    )
+    return int(parsed.timestamp()), parsed.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _valid_hostname(value: str) -> bool:
@@ -98,7 +129,14 @@ class EvidenceRecord:
     case_id: u256
     revision_index: u256
     version: u256
-    url: str
+    issuer: Address
+    record_digest: str
+    record_json: str
+    service_date: str
+    issued_at: str
+    expires_at: str
+    submitted_at: str
+    nonce: str
     replay_domain: str
     evaluated: bool
 
@@ -136,17 +174,85 @@ class MaintenanceProof(gl.Contract):
     def _attempt_key(self, case_id: int, attempt_index: int) -> str:
         return str(case_id) + ":" + str(attempt_index)
 
-    def _replay_domain(self, case_id: int, version: int, url: str) -> str:
+    def _record_replay_domain(
+        self,
+        case_id: int,
+        issuer: str,
+        version: int,
+        record_digest: str,
+        nonce: str,
+    ) -> str:
         payload = "|".join(
             [
-                str(gl.message.chain_id),
+                "maintenaproof.service-record.v2",
+                str(int(gl.message.chain_id)),
                 gl.message.contract_address.as_hex,
                 str(case_id),
+                "ISSUE_SERVICE_RECORD",
+                issuer,
                 str(version),
-                url,
+                record_digest,
+                nonce,
             ]
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def _parse_completed(self, value: str) -> list:
+        try:
+            parsed = json.loads(value)
+        except Exception:
+            parsed = None
+        _require(
+            isinstance(parsed, list) and 1 <= len(parsed) <= 32,
+            "invalid completed actions",
+        )
+        for item in parsed:
+            _require(
+                _valid_printable(item, 1, 256),
+                "invalid completed action",
+            )
+        _require(len(set(parsed)) == len(parsed), "duplicate completed action")
+        return parsed
+
+    def _parse_measurements(self, value: str) -> list:
+        try:
+            parsed = json.loads(value)
+        except Exception:
+            parsed = None
+        _require(
+            isinstance(parsed, list) and len(parsed) <= 32,
+            "invalid measurements",
+        )
+        for item in parsed:
+            _require(
+                isinstance(item, dict)
+                and sorted(item.keys()) == ["name", "unit", "value"]
+                and _valid_printable(item["name"], 1, 64)
+                and _valid_printable(item["unit"], 1, 64)
+                and _valid_printable(item["value"], 1, 128),
+                "invalid measurement",
+            )
+        return parsed
+
+    def _parse_attachments(self, value: str) -> list:
+        try:
+            parsed = json.loads(value)
+        except Exception:
+            parsed = None
+        _require(
+            isinstance(parsed, list) and len(parsed) <= 16,
+            "invalid attachments",
+        )
+        for item in parsed:
+            _require(
+                isinstance(item, dict)
+                and sorted(item.keys()) == ["sha256", "uri"]
+                and _valid_printable(item["uri"], 1, 512)
+                and isinstance(item["sha256"], str)
+                and re.fullmatch(r"[0-9a-f]{64}", item["sha256"]) is not None,
+                "invalid attachment",
+            )
+        return parsed
 
     def _unresolved_decision(
         self,
@@ -340,11 +446,23 @@ class MaintenanceProof(gl.Contract):
         case.status = "CANCELLED"
 
     @gl.public.write
-    def submit_evidence(self, case_id: int, url: str, version: int) -> None:
+    def submit_service_record(
+        self,
+        case_id: int,
+        version: int,
+        service_date: str,
+        issued_at: str,
+        expires_at: str,
+        nonce: str,
+        completed_json: str,
+        measurements_json: str,
+        attachments_json: str,
+        notes: str,
+    ) -> str:
         case = self._get_case(case_id)
-        _require(gl.message.sender_address == case.provider, "only provider")
+        _require(gl.message.sender_address == case.issuer, "only issuer")
         _require(
-            case.status in ("DRAFT", "UNRESOLVED"),
+            case.status in ("AWAITING_RECORD", "UNRESOLVED"),
             "case cannot accept evidence",
         )
         _require(
@@ -352,21 +470,80 @@ class MaintenanceProof(gl.Contract):
             "invalid evidence version",
         )
         _require(
-            _valid_evidence_url(url, case.evidence_hostname),
-            "invalid evidence url",
+            _valid_iso_date(service_date)
+            and case.cycle_start <= service_date <= case.cycle_end,
+            "service date outside cycle",
         )
 
-        replay_domain = self._replay_domain(case_id, version, url)
+        issued_seconds = _parse_utc_timestamp(issued_at)
+        _require(issued_seconds >= 0, "invalid issued timestamp")
+        expiry_seconds = _parse_utc_timestamp(expires_at)
+        _require(expiry_seconds >= 0, "invalid expiry timestamp")
+        _require(expiry_seconds >= issued_seconds, "expiry before issue")
+        _require(
+            service_date <= issued_at[:10] <= case.cycle_end,
+            "issue date outside cycle",
+        )
+        submitted_seconds, submitted_at = _transaction_timestamp()
+        _require(issued_seconds <= submitted_seconds, "record issued in future")
+        _require(expiry_seconds >= submitted_seconds, "record expired")
+        _require(_valid_printable(nonce, 1, 128), "invalid nonce")
+        _require(_valid_printable(notes, 0, 2000), "invalid notes")
+
+        completed = self._parse_completed(completed_json)
+        measurements = self._parse_measurements(measurements_json)
+        attachments = self._parse_attachments(attachments_json)
+        issuer = case.issuer.as_hex
+        record = {
+            "action": "ISSUE_SERVICE_RECORD",
+            "asset_hash": case.asset_hash,
+            "attachments": attachments,
+            "case_id": case_id,
+            "chain_id": int(gl.message.chain_id),
+            "completed_actions": completed,
+            "contract_address": gl.message.contract_address.as_hex,
+            "cycle_id": case.cycle_id,
+            "expires_at": expires_at,
+            "issued_at": issued_at,
+            "issuer": issuer,
+            "measurements": measurements,
+            "nonce": nonce,
+            "notes": notes,
+            "policy_hash": case.policy_hash,
+            "policy_version": case.policy_version,
+            "provider": case.provider.as_hex,
+            "record_schema": case.record_schema,
+            "record_version": version,
+            "service_date": service_date,
+        }
+        record_json = _canonical(record)
+        _require(len(record_json.encode("utf-8")) <= 32000, "record too large")
+        record_digest = hashlib.sha256(record_json.encode("utf-8")).hexdigest()
+        replay_domain = self._record_replay_domain(
+            case_id,
+            issuer,
+            version,
+            record_digest,
+            nonce,
+        )
         _require(
             replay_domain not in self.used_replay_domains,
             "evidence replayed",
         )
+
         revision_index = int(case.evidence_count)
         self.evidence[self._evidence_key(case_id, revision_index)] = EvidenceRecord(
             case_id=u256(case_id),
             revision_index=u256(revision_index),
             version=u256(version),
-            url=url,
+            issuer=case.issuer,
+            record_digest=record_digest,
+            record_json=record_json,
+            service_date=service_date,
+            issued_at=issued_at,
+            expires_at=expires_at,
+            submitted_at=submitted_at,
+            nonce=nonce,
             replay_domain=replay_domain,
             evaluated=False,
         )
@@ -374,6 +551,7 @@ class MaintenanceProof(gl.Contract):
         case.latest_evidence_version = u256(version)
         case.evidence_count = u256(revision_index + 1)
         case.status = "SUBMITTED"
+        return record_digest
 
     @gl.public.write
     def evaluate(self, case_id: int) -> str:
@@ -529,9 +707,16 @@ remain equivalent."""
             {
                 "case_id": int(evidence.case_id),
                 "evaluated": evidence.evaluated,
+                "expires_at": evidence.expires_at,
+                "issued_at": evidence.issued_at,
+                "issuer": evidence.issuer.as_hex,
+                "nonce": evidence.nonce,
+                "record_digest": evidence.record_digest,
+                "record_json": evidence.record_json,
                 "replay_domain": evidence.replay_domain,
                 "revision_index": int(evidence.revision_index),
-                "url": evidence.url,
+                "service_date": evidence.service_date,
+                "submitted_at": evidence.submitted_at,
                 "version": int(evidence.version),
             }
         )
