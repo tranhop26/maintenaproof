@@ -1,72 +1,61 @@
 # MaintenaProof
 
-MaintenaProof is a GenLayer MVP for independently verifiable equipment
-maintenance. An asset owner and a locked service provider cannot safely trust
-each other to decide whether public service evidence satisfies a fixed policy.
-The Intelligent Contract—not the UI or a backend—stores the actors, evidence
-revisions, validator-agreed outcome, and certificate.
+MaintenaProof V2 is a GenLayer application for evaluating an issuer-signed,
+immutable service record against a policy locked by an equipment owner. The
+Intelligent Contract stores the exact canonical record, its SHA-256 digest, the
+validator-agreed outcome, and a recomputable certificate fingerprint.
 
 ## Decision and consequence
 
-Any wallet may ask GenLayer validators to evaluate the latest submitted public
-evidence. The contract deterministically revalidates the agreed JSON against the
-locked asset, provider, cycle, version, date window, and safe outcome rules.
+For one case and record revision, GenLayer decides whether the exact record
+demonstrates every locked obligation, affirmatively demonstrates a missing or
+failed obligation, or is insufficient or unsafe to decide.
 
-- `COMPLIANT`: terminal state and immutable certificate fingerprint.
-- `NON_COMPLIANT`: terminal state when matched evidence affirmatively proves a
-  missing or failed obligation.
-- `UNRESOLVED`: non-terminal safe result for missing, malformed, stale,
-  mismatched, contradictory, or insufficient evidence; the provider may submit
-  a strictly newer revision.
-- Consensus/protocol failure: the transaction fails atomically and leaves the
-  case `SUBMITTED` with no attempt written.
+- `COMPLIANT`: terminal; creates a digest-bound certificate fingerprint.
+- `NON_COMPLIANT`: terminal; requires an affirmative missing/failed obligation.
+- `UNRESOLVED`: safe and non-terminal; the issuer may submit a newer record.
+- Consensus failure: atomic failure; the case remains `SUBMITTED`.
 
-The full state machine is `DRAFT → SUBMITTED → COMPLIANT | NON_COMPLIANT |
-UNRESOLVED`; `UNRESOLVED → SUBMITTED` permits a newer evidence revision, and an
-owner may move only `DRAFT → CANCELLED`.
+The state machine is `AWAITING_RECORD → SUBMITTED → COMPLIANT |
+NON_COMPLIANT | UNRESOLVED`. An owner can cancel only while awaiting the first
+record. Any wallet may request evaluation.
 
-## Architecture
+## Trust model
 
-```text
-Next.js UI + browser wallet
-        │ read/write, no verdict logic
-        ▼
-Typed GenLayerJS adapter
-        │ waits FINALIZED → checks execution → verifies readback
-        ▼
-MaintenanceProof Intelligent Contract
-        ├─ authorization and state machine
-        ├─ append-only evidence/replay binding
-        ├─ web fetch + comparative validator consensus
-        └─ attempts and certificate readback
-```
+The owner binds separate issuer and provider wallets. The issuer transaction
+authenticates which wallet issued the record; it does not prove the legal
+identity controlling that wallet or independently prove the physical service
+event. The provider identifies the party responsible for service. Validators
+assess only the exact record stored on-chain—no mutable evidence URL is fetched.
 
-The contract is `INTENTIONALLY_FROZEN`: there is no proxy, admin outcome
-override, or storage migration. Recovery is a reviewed new deployment with old
-addresses preserved; see [docs/DESIGN.md](docs/DESIGN.md) and
-[docs/RECOVERY.md](docs/RECOVERY.md).
+The contract constructs canonical JSON from validated typed inputs and contract
+context. Its replay domain binds schema, chain, contract, case, action, issuer,
+version, record digest, and nonce. A certificate binds the issuer, provider,
+record digest/schema/version, asset, policy hash/version, cycle, outcome,
+normalized findings, and service timestamps.
 
-Studionet deployment: [`0xffa5207C24e8Cd115c734eef23f2d891A4781F84`](https://explorer-studio.genlayer.com/address/0xffa5207C24e8Cd115c734eef23f2d891A4781F84), deployed in transaction [`0x25fc…34d66`](https://explorer-studio.genlayer.com/tx/0x25fc98f44aa81afafe815b06f5fadf7a6d5cff4aef1eb69d509c119f42034d66). The public manifest is under `deployments/` and the observed proof matrix is in [docs/EVIDENCE.md](docs/EVIDENCE.md).
+See [design](docs/DESIGN.md), [recovery](docs/RECOVERY.md), and
+[verification evidence](docs/EVIDENCE.md).
 
-Production frontend: [maintenaproof.vercel.app](https://maintenaproof.vercel.app).
+## Deployment status
 
-## Setup
+V2 is reviewed locally and requires a **new contract address** because the
+contract is `INTENTIONALLY_FROZEN`. It has not been deployed or promoted by this
+change.
+
+The existing Studionet contract
+[`0xffa…1F84`](https://explorer-studio.genlayer.com/address/0xffa5207C24e8Cd115c734eef23f2d891A4781F84)
+and [maintenaproof.vercel.app](https://maintenaproof.vercel.app) are **legacy V1**
+deployments based on mutable public-URL evidence. Their certificates do not
+have V2 issuer/digest guarantees. The V1 manifest remains under `deployments/`.
+
+## Setup and verification
 
 Requirements: Python 3.12+, Node.js 22+, and pnpm 10.
 
 ```powershell
 python -m pip install -r requirements.txt
-pnpm install
-Copy-Item .env.example .env.local
-```
-
-Fill only the variables needed for the current operation. Never commit real
-keys or tokens. The frontend requires `NEXT_PUBLIC_CONTRACT_ADDRESS` after the
-contract is deployed; `NEXT_PUBLIC_GENLAYER_RPC_URL` may select the Studio RPC.
-
-## Verify
-
-```powershell
+pnpm install --frozen-lockfile
 $env:PYTHONUTF8='1'
 genvm-lint check contracts/maintenance_proof.py
 pytest tests/direct -v
@@ -79,50 +68,35 @@ pnpm --dir frontend typecheck
 pnpm --dir frontend build
 ```
 
-The real Studio suites deploy and transact, so run them only with the confirmed
-deployment identity and environment:
+Real Studio tests deploy and transact and must run only after confirming the
+active wallet and network:
 
 ```powershell
 pytest tests/integration -v
 pnpm --dir frontend test:integration
 ```
 
-## Run and use
+Never commit private keys, tokens, `.env` files, or build output.
+
+## Run
 
 ```powershell
 pnpm --dir frontend dev
 ```
 
-Connect a wallet on Studionet. The owner creates a case; the locked provider
-submits an HTTPS evidence URL on the exact configured hostname; any wallet can
-request evaluation; all actors read the resulting status, attempt, and optional
-certificate from the contract. The UI distinguishes disconnected, awaiting
-signature, pending, finalized, execution success/error, and confirmed readback.
-
-## Deploy
-
-After confirming the active wallet and Studionet selection:
-
-```powershell
-pnpm deploy:contract
-```
-
-The script waits for `FINALIZED`, checks zero-case readback, and writes a public
-manifest under `deployments/`. After confirming the Vercel account/team/project:
-
-```powershell
-vercel link --yes --project maintenaproof --scope tdh-s-projects --token $env:VERCEL_TOKEN
-vercel deploy --prod --yes --scope tdh-s-projects --token $env:VERCEL_TOKEN
-```
+The owner creates a case, the bound issuer submits structured service data, any
+wallet requests evaluation, and readers verify the on-chain record digest and
+certificate. Durable UI state advances only after `FINALIZED`, successful
+execution, and authoritative readback.
 
 ## Known limitations
 
-- Evidence must be public HTTPS text on one exact hostname; authenticated or
-  private maintenance systems are out of scope.
-- No escrow, stake, payment, notification service, or backend account database.
-- `NON_COMPLIANT` requires affirmative evidence; absence alone is never failure.
-- `NON_COMPLIANT` is covered by direct tests but has no fixed live Studionet
-  transaction in the submitted proof matrix.
-- A frozen deployment cannot be patched in place; recovery uses a new address.
-- Validator output is nondeterministic by design; even apparently valid public
-  evidence may safely resolve to `UNRESOLVED` rather than being approved.
+- Wallet issuance is not legal-identity verification or physical-event proof.
+- Attachment URIs and their declared digests are stored, but V2 does not fetch
+  attachment bytes or prove their content matches the digest.
+- Asset hashes bind records consistently but do not independently identify
+  physical equipment.
+- No escrow, stake, payment, notification service, or account database.
+- A frozen deployment cannot be patched; recovery requires a new address.
+- Validator interpretation is nondeterministic; unsafe evidence resolves to
+  `UNRESOLVED` rather than receiving a favorable default.

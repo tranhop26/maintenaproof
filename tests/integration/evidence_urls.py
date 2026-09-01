@@ -1,25 +1,34 @@
-"""Stable public evidence URLs used by Studionet integration tests."""
+"""Fresh V2 service-record arguments for collectable Studionet tests."""
 
-import base64
+from datetime import datetime, timedelta, timezone
 import json
-from urllib.parse import quote
 
 
-def build_evidence_url(provider: str, *, asset_hash: str = "a" * 64) -> str:
-    payload = {
-        "asset_hash": asset_hash,
-        "completed": [
-            "replace intake filter",
-            "verify outlet pressure 80-120 psi",
+def build_service_record(*, version: int = 1, nonce: str = "studionet-record-001"):
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    service = (now - timedelta(days=1)).date()
+    issued = datetime.combine(service, datetime.min.time(), timezone.utc) + timedelta(hours=12)
+    expiry = now + timedelta(days=30)
+    return {
+        "cycle_start": (service - timedelta(days=1)).isoformat(),
+        "cycle_end": expiry.date().isoformat(),
+        "args": [
+            0,
+            version,
+            service.isoformat(),
+            issued.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            expiry.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            nonce,
+            json.dumps(
+                [
+                    "replace intake filter",
+                    "verify outlet pressure 80-120 psi",
+                ]
+            ),
+            json.dumps(
+                [{"name": "outlet pressure", "value": "100", "unit": "psi"}]
+            ),
+            json.dumps([]),
+            "Studionet issuer service record",
         ],
-        "cycle_id": "cycle-2026-q3",
-        "evidence_version": 1,
-        "policy_version": "hvac-v1",
-        "provider": provider,
-        "report_issue_date": "2026-08-16",
-        "service_date": "2026-08-15",
     }
-    encoded = base64.b64encode(
-        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-    ).decode()
-    return "https://httpbin.org/base64/" + quote(encoded, safe="")
