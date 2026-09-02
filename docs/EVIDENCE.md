@@ -2,7 +2,8 @@
 
 Verification status: **V2 DEPLOYED AND PROMOTED; FINALIZED DISTINCT-ACTOR
 COMPLIANT FLOW, NEGATIVE ISSUER AUTHORIZATION, DIGEST RECOMPUTATION, AND
-CERTIFICATE RECOMPUTATION VERIFIED.**
+CERTIFICATE RECOMPUTATION VERIFIED; LIVE EXPIRED-EVIDENCE SAFE DEFAULT
+VERIFIED AS UNRESOLVED.**
 
 ## V2 Studionet deployment
 
@@ -40,6 +41,19 @@ CERTIFICATE RECOMPUTATION VERIFIED.**
 - Stored and independently recomputed certificate fingerprint: `133f202c2c92b9e7a0886bb93de77422d4ee5c66c3951aa0bf97df71f4c70b24`
 - Final readback: `case_count = 1`, case status `COMPLIANT`, evidence `evaluated = true`
 
+## V2 live safe-default proof
+
+- Production case: [case 1](https://maintenaproof.vercel.app/cases/1)
+- Owner: `0xd4C4473581315dbe9a8b7874438ac6f9798B51F5`
+- Issuer/provider: `0x771CDDa91db42d81Fb17fA6Fc6F133d336D7823D`
+- Evaluator: `0xC3a69B7A6cBb0E3eF83e109d3E7201803a8B815c`
+- Create case: [`0x5f84…6f8d`](https://explorer-studio.genlayer.com/tx/0x5f84238a774a543e6d5de8a8e2e2874a4089f59951c8eb522061f08554c26f8d) — `FINALIZED`, `SUCCESS`
+- Issuer submission: [`0xc780…8a4d`](https://explorer-studio.genlayer.com/tx/0xc780f83627308c9c02a45216ea11799e2b78fcfa8dead0244bdfdc8293dc8a4d) — `FINALIZED`, `SUCCESS`
+- Evaluation: [`0xac6c…0ada`](https://explorer-studio.genlayer.com/tx/0xac6cdc53b5c27a25d544902a9777f1f46483cef3917105780df4858e87ca0ada) — `FINALIZED`, `SUCCESS`, `UNRESOLVED`
+- Safe-default reason: `EVIDENCE_EXPIRED`; the evidence expired at `2026-09-02T02:14:45Z` before evaluation.
+- Stored and independently recomputed record digest: `7b9f72563c4dcbdeb7e6a3e7525e55f37fcf4f240f8fe1bbc228989639f985cb`
+- Final readback: `case_count = 2`, case status `UNRESOLVED`, evidence `evaluated = true`, certificate fingerprint empty, and `get_certificate` unavailable.
+
 ## V2 proof matrix
 
 | Claim | Current evidence | External evidence required before promotion |
@@ -49,8 +63,8 @@ CERTIFICATE RECOMPUTATION VERIFIED.**
 | Exact record bytes are immutable and digest-recomputable | Finalized submission plus independent SHA-256 recomputation | Verified |
 | Verdict binds issuer/digest/schema/policy/timestamps | Finalized evaluation plus attempt readback | Verified |
 | Certificate is independently recomputable | Compliant transaction plus independent fingerprint recomputation | Verified |
-| Expired/unsafe evidence cannot receive a favorable default | Expiry, malformed, contradictory, and consensus-failure direct tests | `UNRESOLVED` live observation |
-| Frontend does not fabricate durable success | Production case/certificate readback matches contract evidence | Verified for the compliant flow |
+| Expired/unsafe evidence cannot receive a favorable default | Finalized expired-evidence evaluation, `EVIDENCE_EXPIRED` attempt readback, and direct tests | Verified with live `UNRESOLVED` case |
+| Frontend does not fabricate durable success | Production compliant certificate and unresolved no-certificate readbacks match contract evidence | Verified for compliant and safe-default flows |
 
 Current checkpoints on 2026-09-02:
 
@@ -59,8 +73,9 @@ Current checkpoints on 2026-09-02:
 - Frontend tests: 36 passed; 2 environment-gated live tests skipped.
 - Frontend lint, typecheck, and production build: pass.
 - Studionet integration suite: 2 environment-gated tests collect successfully.
-- V2 deployment and four-transaction live actor-flow are finalized. Production
-  renders the authoritative compliant case and digest-bound certificate.
+- V2 deployment, the four-transaction compliant actor flow, and the
+  three-transaction expired-evidence flow are finalized. Production renders the
+  authoritative compliant certificate and the `UNRESOLVED` no-certificate case.
 
 ## Legacy V1 evidence
 
@@ -75,10 +90,9 @@ since been promoted to the separately deployed V2 address documented above.
 
 ## Remaining evidence
 
-The principal review request is now covered by a live compliant flow and a live
-negative issuer-authorization transaction. A separate live `UNRESOLVED` case
-would add external evidence for the safe-default branch; that branch remains
-covered by direct tests rather than a promoted live case.
+The principal review request and the promoted compliant, negative authorization,
+and safe `UNRESOLVED` branches now have finalized live evidence. The limitations
+below remain explicit and are not claimed as solved by these flows.
 
 ## Known limitations
 

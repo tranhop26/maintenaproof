@@ -71,5 +71,40 @@
       "evidenceEvaluated": true
     },
     "productionReadback": "https://maintenaproof.vercel.app/cases/0"
+  },
+  "liveSafeDefaultFlow": {
+    "observedAt": "2026-09-02T09:17:58+07:00",
+    "caseId": 1,
+    "actors": {
+      "owner": "0xd4C4473581315dbe9a8b7874438ac6f9798B51F5",
+      "issuer": "0x771CDDa91db42d81Fb17fA6Fc6F133d336D7823D",
+      "provider": "0x771CDDa91db42d81Fb17fA6Fc6F133d336D7823D",
+      "evaluator": "0xC3a69B7A6cBb0E3eF83e109d3E7201803a8B815c"
+    },
+    "transactions": {
+      "createCase": "0x5f84238a774a543e6d5de8a8e2e2874a4089f59951c8eb522061f08554c26f8d",
+      "submitServiceRecord": "0xc780f83627308c9c02a45216ea11799e2b78fcfa8dead0244bdfdc8293dc8a4d",
+      "evaluate": "0xac6cdc53b5c27a25d544902a9777f1f46483cef3917105780df4858e87ca0ada"
+    },
+    "execution": {
+      "createCase": "SUCCESS",
+      "submitServiceRecord": "SUCCESS",
+      "evaluate": "SUCCESS"
+    },
+    "issuedAt": "2026-09-02T02:10:45Z",
+    "expiresAt": "2026-09-02T02:14:45Z",
+    "recordDigest": "7b9f72563c4dcbdeb7e6a3e7525e55f37fcf4f240f8fe1bbc228989639f985cb",
+    "recomputedRecordDigest": "7b9f72563c4dcbdeb7e6a3e7525e55f37fcf4f240f8fe1bbc228989639f985cb",
+    "replayDomain": "fdefe8392ea98bc9b76d72d40f6fac31f772648d96e9071b44198ddd277a8081",
+    "outcome": "UNRESOLVED",
+    "reason": "EVIDENCE_EXPIRED",
+    "certificateFingerprint": "",
+    "certificateUnavailable": true,
+    "finalReadback": {
+      "caseCount": 2,
+      "caseStatus": "UNRESOLVED",
+      "evidenceEvaluated": true
+    },
+    "productionReadback": "https://maintenaproof.vercel.app/cases/1"
   }
 }
