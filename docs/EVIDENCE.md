@@ -1,7 +1,8 @@
 # MaintenaProof verification evidence
 
-Verification status: **V2 DEPLOYED TO STUDIONET; DEPLOYMENT FINALIZED AND
-ZERO-CASE READBACK VERIFIED. LIVE ACTOR-FLOW EVIDENCE IS STILL PENDING.**
+Verification status: **V2 DEPLOYED AND PROMOTED; FINALIZED DISTINCT-ACTOR
+COMPLIANT FLOW, NEGATIVE ISSUER AUTHORIZATION, DIGEST RECOMPUTATION, AND
+CERTIFICATE RECOMPUTATION VERIFIED.**
 
 ## V2 Studionet deployment
 
@@ -25,27 +26,41 @@ ZERO-CASE READBACK VERIFIED. LIVE ACTOR-FLOW EVIDENCE IS STILL PENDING.**
 - Production readback: dashboard displayed `0 ON-CHAIN RECORDS` and no
   fabricated fallback data; V2 create-case fields rendered successfully.
 
+## V2 live distinct-actor proof
+
+- Production case: [case 0](https://maintenaproof.vercel.app/cases/0)
+- Owner: `0x9b164C92A8528529c4B7f16378a6666fDf79CF1e`
+- Issuer/provider: `0x86cd4F675eB7CC08e86243C6C9974a74e5acF049`
+- Evaluator: `0xDaD75232B33D06Fab153E28E742078D7e185918f`
+- Create case: [`0xbb0b…dcc0`](https://explorer-studio.genlayer.com/tx/0xbb0bf9cce3cdd343aa72992ecd400a6bf971b3ddab9ecf6122d122b6182fdcc0) — `FINALIZED`, `SUCCESS`
+- Unauthorized owner submission: [`0xd8be…c27a`](https://explorer-studio.genlayer.com/tx/0xd8be95f97e694df4bc6e1d34a7a9357b9823465070e77b4506108340d0b2c27a) — `FINALIZED`, `ERROR`; readback remained `AWAITING_RECORD` with zero evidence
+- Issuer submission: [`0x4da1…f9f3`](https://explorer-studio.genlayer.com/tx/0x4da125c25d1332e2376575f21f3840682f977dff0534b7997679b139dc9bf9f3) — `FINALIZED`, `SUCCESS`
+- Evaluation: [`0x2f35…ce62`](https://explorer-studio.genlayer.com/tx/0x2f35de10ce699c8f4f30b595a2e56b84dd70b7308d96b70365a576b8c0a8ce62) — `FINALIZED`, `SUCCESS`, `COMPLIANT`
+- Stored and independently recomputed record digest: `39bc57ba9f516c4cf2d94fbdd2fac95c02dd1abbb80bf50124dfcd399b352e6e`
+- Stored and independently recomputed certificate fingerprint: `133f202c2c92b9e7a0886bb93de77422d4ee5c66c3951aa0bf97df71f4c70b24`
+- Final readback: `case_count = 1`, case status `COMPLIANT`, evidence `evaluated = true`
+
 ## V2 proof matrix
 
 | Claim | Current evidence | External evidence required before promotion |
 |---|---|---|
-| Owner locks issuer, provider, policy hash, cycle, and schema | Direct lifecycle tests | Finalized `create_case` transaction and readback |
-| Only issuer can submit | Direct authorization tests and collectable live negative test | Finalized unauthorized execution failure; unchanged readback |
-| Exact record bytes are immutable and digest-recomputable | Canonical record/digest direct tests | Finalized submission plus `get_evidence` recomputation |
-| Verdict binds issuer/digest/schema/policy/timestamps | Binding-mutation and safe-normalization direct tests | Finalized evaluation plus attempt readback |
-| Certificate is independently recomputable | Direct certificate vector | Compliant transaction and certificate recomputation |
+| Owner locks issuer, provider, policy hash, cycle, and schema | Direct tests plus finalized `create_case` readback | Verified |
+| Only issuer can submit | Finalized unauthorized execution failure plus unchanged readback | Verified |
+| Exact record bytes are immutable and digest-recomputable | Finalized submission plus independent SHA-256 recomputation | Verified |
+| Verdict binds issuer/digest/schema/policy/timestamps | Finalized evaluation plus attempt readback | Verified |
+| Certificate is independently recomputable | Compliant transaction plus independent fingerprint recomputation | Verified |
 | Expired/unsafe evidence cannot receive a favorable default | Expiry, malformed, contradictory, and consensus-failure direct tests | `UNRESOLVED` live observation |
-| Frontend does not fabricate durable success | Adapter execution/readback tests | Production wallet flow and explorer/readback comparison |
+| Frontend does not fabricate durable success | Production case/certificate readback matches contract evidence | Verified for the compliant flow |
 
-Current local checkpoints on 2026-09-01:
+Current checkpoints on 2026-09-02:
 
 - Contract lint and validation: pass; 9 public methods.
 - Direct contract tests: 86 passed, including independent recomputation vectors.
 - Frontend tests: 36 passed; 2 environment-gated live tests skipped.
 - Frontend lint, typecheck, and production build: pass.
 - Studionet integration suite: 2 environment-gated tests collect successfully.
-- V2 deployment is finalized and its zero-case readback is verified. The live
-  actor-flow evidence listed below has not yet been created.
+- V2 deployment and four-transaction live actor-flow are finalized. Production
+  renders the authoritative compliant case and digest-bound certificate.
 
 ## Legacy V1 evidence
 
@@ -55,16 +70,15 @@ deployment transaction
 [`0x25fc…34d66`](https://explorer-studio.genlayer.com/tx/0x25fc98f44aa81afafe815b06f5fadf7a6d5cff4aef1eb69d509c119f42034d66),
 and historical transactions in the previous evidence package prove only the V1
 URL-based workflow. They do not prove issuer authentication, immutable evidence
-bytes, digest-bound verdicts, or V2 certificate fields. The existing production
-site is likewise legacy until a separately confirmed V2 promotion.
+bytes, digest-bound verdicts, or V2 certificate fields. The production site has
+since been promoted to the separately deployed V2 address documented above.
 
-## Remaining evidence before production promotion
+## Remaining evidence
 
-Before calling V2 production-ready, record the actor transaction hashes,
-execution results, record digest recomputation, certificate fingerprint
-recomputation, GitHub remote/account, and Vercel team/project/deployment. Every
-promoted transaction must be `FINALIZED` with successful execution and matching
-post-transaction readback.
+The principal review request is now covered by a live compliant flow and a live
+negative issuer-authorization transaction. A separate live `UNRESOLVED` case
+would add external evidence for the safe-default branch; that branch remains
+covered by direct tests rather than a promoted live case.
 
 ## Known limitations
 

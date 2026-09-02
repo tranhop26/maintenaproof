@@ -33,5 +33,43 @@
       "caseCount": 0,
       "observedAt": "2026-09-01T20:43:24+07:00"
     }
+  },
+  "liveActorFlow": {
+    "observedAt": "2026-09-02T08:45:30+07:00",
+    "caseId": 0,
+    "actors": {
+      "owner": "0x9b164C92A8528529c4B7f16378a6666fDf79CF1e",
+      "issuer": "0x86cd4F675eB7CC08e86243C6C9974a74e5acF049",
+      "provider": "0x86cd4F675eB7CC08e86243C6C9974a74e5acF049",
+      "evaluator": "0xDaD75232B33D06Fab153E28E742078D7e185918f"
+    },
+    "transactions": {
+      "createCase": "0xbb0bf9cce3cdd343aa72992ecd400a6bf971b3ddab9ecf6122d122b6182fdcc0",
+      "unauthorizedSubmission": "0xd8be95f97e694df4bc6e1d34a7a9357b9823465070e77b4506108340d0b2c27a",
+      "submitServiceRecord": "0x4da125c25d1332e2376575f21f3840682f977dff0534b7997679b139dc9bf9f3",
+      "evaluate": "0x2f35de10ce699c8f4f30b595a2e56b84dd70b7308d96b70365a576b8c0a8ce62"
+    },
+    "execution": {
+      "createCase": "SUCCESS",
+      "unauthorizedSubmission": "ERROR",
+      "submitServiceRecord": "SUCCESS",
+      "evaluate": "SUCCESS"
+    },
+    "authorizationReadback": {
+      "statusAfterUnauthorizedSubmission": "AWAITING_RECORD",
+      "evidenceCountAfterUnauthorizedSubmission": 0
+    },
+    "recordDigest": "39bc57ba9f516c4cf2d94fbdd2fac95c02dd1abbb80bf50124dfcd399b352e6e",
+    "recomputedRecordDigest": "39bc57ba9f516c4cf2d94fbdd2fac95c02dd1abbb80bf50124dfcd399b352e6e",
+    "replayDomain": "52caf363721cd6e6a8bc04f85353f4ec85dd09b7a308d9ce54e08897c5d3a96f",
+    "outcome": "COMPLIANT",
+    "certificateFingerprint": "133f202c2c92b9e7a0886bb93de77422d4ee5c66c3951aa0bf97df71f4c70b24",
+    "recomputedCertificateFingerprint": "133f202c2c92b9e7a0886bb93de77422d4ee5c66c3951aa0bf97df71f4c70b24",
+    "finalReadback": {
+      "caseCount": 1,
+      "caseStatus": "COMPLIANT",
+      "evidenceEvaluated": true
+    },
+    "productionReadback": "https://maintenaproof.vercel.app/cases/0"
   }
 }
